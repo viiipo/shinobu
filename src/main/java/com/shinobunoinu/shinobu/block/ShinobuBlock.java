@@ -1,7 +1,12 @@
 package com.shinobunoinu.shinobu.block;
 
+import com.shinobunoinu.shinobu.block.util.ClothingType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
@@ -10,7 +15,8 @@ import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
-import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
@@ -36,12 +42,16 @@ public class ShinobuBlock extends HorizontalDirectionalBlock {
                 // SoundType类是MC原版方块的音效库，偷懒的话直接从这调用就行，比如这里用的羊毛声音模板，把.WOOL删了重新打.符号，会提示你有哪些选择
                 // 自定义音效以后再讲
                 .sound(SoundType.WOOL));
+        this.registerDefaultState(this.stateDefinition.any()
+                .setValue(CLOTHING_TYPE, ClothingType.CLOTH_ONE)
+        );
     }
 
     // 这个方法就是给方块添加了一个方块状态FACING
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> pBuilder) {
         pBuilder.add(FACING);
+        pBuilder.add(CLOTHING_TYPE);
     }
 
     // 这个方法是让玩家放置该方块的时候设定状态为FACING，FACING有东南西北四个值，context.getHorizontalDirection()这个参数就是玩家面朝方向，.getOpposite()把前面的方向取反，这样方块就能面朝玩家了
@@ -70,33 +80,24 @@ public class ShinobuBlock extends HorizontalDirectionalBlock {
     public VoxelShape getShape(BlockState State, BlockGetter getter, BlockPos pos, CollisionContext context) {
         return SHAPE;
     }
-    // 新增属性
-    public static final BooleanProperty ACTIVATED = BooleanProperty.create("activated");
 
+
+    // 新增属性
+    public static final EnumProperty<ClothingType> CLOTHING_TYPE = EnumProperty.create("cloth", ClothingType.class);
 
     // 保留原有的面朝玩家逻辑
 
-
-    @SubscribeEvent
-    public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
-        if (event.getSide() != LogicalSide.SERVER) return;
-
-        Level world = event.getLevel();
-        BlockPos pos = event.getPos();
-        BlockState state = world.getBlockState(pos);
-
-        if (state.getBlock() instanceof ShinobuBlock) {
-            // 获取当前状态值（保留原有朝向）
+    @Override
+    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player pPlayer, InteractionHand pHand, BlockHitResult pHit) {
+        if (level instanceof ServerLevel serverLevel) {
             Direction facing = state.getValue(ShinobuBlock.FACING);
-            boolean activated = state.getValue(ShinobuBlock.ACTIVATED);
-
+            ClothingType nextType = state.getValue(CLOTHING_TYPE).cycle();
             // 创建新状态：保留朝向，切换激活状态
             BlockState newState = state
-                    .setValue(ShinobuBlock.ACTIVATED, !activated)
-                    .setValue(ShinobuBlock.FACING, facing); // 确保朝向不变
-
-            world.setBlock(pos, newState, Block.UPDATE_ALL);
-            event.setCanceled(true);
+                    .setValue(ShinobuBlock.FACING, facing) // 确保朝向不变
+                    .setValue(ShinobuBlock.CLOTHING_TYPE, nextType);
+            level.setBlock(pos, newState, Block.UPDATE_ALL);
         }
+        return InteractionResult.SUCCESS;
     }
 }
