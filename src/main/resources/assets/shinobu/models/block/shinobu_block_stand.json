@@ -2,8 +2,8 @@
 	"credit": "Made with Blockbench",
 	"texture_size": [64, 64],
 	"textures": {
-		"1": "shinobu:block/shinobu_block_off",
-		"particle":"shinobu:block/shinobu_block_off"
+		"1": "shinobu:block/shinobu_block_stand",
+		"particle":"shinobu:block/shinobu_block_stand"
 	},
 	"elements": [
 		{

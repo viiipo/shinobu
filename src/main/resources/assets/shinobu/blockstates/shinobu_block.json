@@ -1,24 +1,54 @@
 {
   "variants": {
-    "facing=north,cloth=cloth_one": { "model": "shinobu:block/shinobu_block_off", "y": 0 },
-    "facing=north,cloth=cloth_two": { "model": "shinobu:block/shinobu_block_on", "y": 0 },
-    "facing=north,cloth=cloth_three": { "model": "shinobu:block/shinobu_block_off", "y": 0 },
-    "facing=north,cloth=cloth_four": { "model": "shinobu:block/shinobu_block_on", "y": 0 },
-    "facing=north,cloth=cloth_five": { "model": "shinobu:block/shinobu_block_off", "y": 0 },
-    "facing=east,cloth=cloth_one":  { "model": "shinobu:block/shinobu_block_on", "y": 90 },
-    "facing=east,cloth=cloth_two":  { "model": "shinobu:block/shinobu_block_off", "y": 90 },
-    "facing=east,cloth=cloth_three":  { "model": "shinobu:block/shinobu_block_on", "y": 90 },
-    "facing=east,cloth=cloth_four":  { "model": "shinobu:block/shinobu_block_off", "y": 90 },
-    "facing=east,cloth=cloth_five":  { "model": "shinobu:block/shinobu_block_on", "y": 90 },
-    "facing=south,cloth=cloth_one": { "model": "shinobu:block/shinobu_block_off", "y": 180 },
-    "facing=south,cloth=cloth_two": { "model": "shinobu:block/shinobu_block_on", "y": 180 },
-    "facing=south,cloth=cloth_three": { "model": "shinobu:block/shinobu_block_off", "y": 180 },
-    "facing=south,cloth=cloth_four": { "model": "shinobu:block/shinobu_block_on", "y": 180 },
-    "facing=south,cloth=cloth_five": { "model": "shinobu:block/shinobu_block_off", "y": 180 },
-    "facing=west,cloth=cloth_one":  { "model": "shinobu:block/shinobu_block_on", "y": 270 },
-    "facing=west,cloth=cloth_two":  { "model": "shinobu:block/shinobu_block_off", "y": 270 },
-    "facing=west,cloth=cloth_three":  { "model": "shinobu:block/shinobu_block_on", "y": 270 },
-    "facing=west,cloth=cloth_four":  { "model": "shinobu:block/shinobu_block_off", "y": 270 },
-    "facing=west,cloth=cloth_five":  { "model": "shinobu:block/shinobu_block_on", "y": 270 }
+    "facing=north,gesture=stand,color=default": { "model": "shinobu:block/shinobu_block_stand", "y": 0 },
+    "facing=north,gesture=sit,color=default": { "model": "shinobu:block/shinobu_block_sit", "y": 0 },
+    "facing=north,gesture=lie,color=default": { "model": "shinobu:block/shinobu_block_lie", "y": 0 },
+
+    "facing=east,gesture=stand,color=default":  { "model": "shinobu:block/shinobu_block_stand", "y": 90 },
+    "facing=east,gesture=sit,color=default":  { "model": "shinobu:block/shinobu_block_sit", "y": 90 },
+    "facing=east,gesture=lie,color=default":  { "model": "shinobu:block/shinobu_block_lie", "y": 90 },
+
+    "facing=south,gesture=stand,color=default": { "model": "shinobu:block/shinobu_block_stand", "y": 180 },
+    "facing=south,gesture=sit,color=default": { "model": "shinobu:block/shinobu_block_sit", "y": 180 },
+    "facing=south,gesture=lie,color=default": { "model": "shinobu:block/shinobu_block_lie", "y": 180 },
+
+    "facing=west,gesture=stand,color=default":  { "model": "shinobu:block/shinobu_block_stand", "y": 270 },
+    "facing=west,gesture=sit,color=default":  { "model": "shinobu:block/shinobu_block_sit", "y": 270 },
+    "facing=west,gesture=lie,color=default":  { "model": "shinobu:block/shinobu_block_lie", "y": 270 },
+
+
+    "facing=north,gesture=stand,color=pink": { "model": "shinobu:block/shinobu_block_stand_pink", "y": 0 },
+    "facing=north,gesture=sit,color=pink": { "model": "shinobu:block/shinobu_block_sit_pink", "y": 0 },
+    "facing=north,gesture=lie,color=pink": { "model": "shinobu:block/shinobu_block_lie_pink", "y": 0 },
+
+    "facing=east,gesture=stand,color=pink":  { "model": "shinobu:block/shinobu_block_stand_pink", "y": 90 },
+    "facing=east,gesture=sit,color=pink":  { "model": "shinobu:block/shinobu_block_sit_pink", "y": 90 },
+    "facing=east,gesture=lie,color=pink":  { "model": "shinobu:block/shinobu_block_lie_pink", "y": 90 },
+
+    "facing=south,gesture=stand,color=pink": { "model": "shinobu:block/shinobu_block_stand_pink", "y": 180 },
+    "facing=south,gesture=sit,color=pink": { "model": "shinobu:block/shinobu_block_sit_pink", "y": 180 },
+    "facing=south,gesture=lie,color=pink": { "model": "shinobu:block/shinobu_block_lie_pink", "y": 180 },
+
+    "facing=west,gesture=stand,color=pink":  { "model": "shinobu:block/shinobu_block_stand_pink", "y": 270 },
+    "facing=west,gesture=sit,color=pink":  { "model": "shinobu:block/shinobu_block_sit_pink", "y": 270 },
+    "facing=west,gesture=lie,color=pink":  { "model": "shinobu:block/shinobu_block_lie_pink", "y": 270 },
+
+
+    "facing=north,gesture=stand,color=black": { "model": "shinobu:block/shinobu_block_stand_black", "y": 0 },
+    "facing=north,gesture=sit,color=black": { "model": "shinobu:block/shinobu_block_sit_black", "y": 0 },
+    "facing=north,gesture=lie,color=black": { "model": "shinobu:block/shinobu_block_lie_black", "y": 0 },
+
+    "facing=east,gesture=stand,color=black":  { "model": "shinobu:block/shinobu_block_stand_black", "y": 90 },
+    "facing=east,gesture=sit,color=black":  { "model": "shinobu:block/shinobu_block_sit_black", "y": 90 },
+    "facing=east,gesture=lie,color=black":  { "model": "shinobu:block/shinobu_block_lie_black", "y": 90 },
+
+    "facing=south,gesture=stand,color=black": { "model": "shinobu:block/shinobu_block_stand_black", "y": 180 },
+    "facing=south,gesture=sit,color=black": { "model": "shinobu:block/shinobu_block_sit_black", "y": 180 },
+    "facing=south,gesture=lie,color=black": { "model": "shinobu:block/shinobu_block_lie_black", "y": 180 },
+
+    "facing=west,gesture=stand,color=black":  { "model": "shinobu:block/shinobu_block_stand_black", "y": 270 },
+    "facing=west,gesture=sit,color=black":  { "model": "shinobu:block/shinobu_block_sit_black", "y": 270 },
+    "facing=west,gesture=lie,color=black":  { "model": "shinobu:block/shinobu_block_lie_black", "y": 270 }
+
   }
 }
