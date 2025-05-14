@@ -2,8 +2,10 @@ package com.shinobunoinu.shinobu.block;
 
 import com.shinobunoinu.shinobu.block.util.ColorType;
 import com.shinobunoinu.shinobu.block.util.Gesture;
+import com.shinobunoinu.shinobu.registry.ItemRegistry;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -21,6 +23,7 @@ import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.CollisionContext;
@@ -30,6 +33,8 @@ import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.LogicalSide;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.stream.Stream;
 
 /* 这种方块跟普通方块代码区别:
@@ -130,4 +135,18 @@ public class ShinobuBlock extends HorizontalDirectionalBlock {
 
         return super.use(state, world, pos, player, hand, hit);
     }
+    // 关键方法：定义掉落物逻辑
+    @Override
+    public List<ItemStack> getDrops(BlockState state, LootParams.Builder params) {
+        // 创建物品堆栈
+        ItemStack stack = new ItemStack(ItemRegistry.Shinobu_BLOCK_ITEM.get());
+
+        // 保存颜色状态到NBT
+        CompoundTag tag = new CompoundTag();
+        tag.putString("color", state.getValue(COLOR).getSerializedName());
+        stack.setTag(tag);
+
+        return Collections.singletonList(stack);
+    }
 }
+
