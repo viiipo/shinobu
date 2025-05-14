@@ -15,10 +15,13 @@ public class ItemRegistry {
 
 
     // 默认状态物品
-    public static final RegistryObject<Item> SHINOBU_BLOCK_DEFAULT_ITEM =
+    public static final RegistryObject<Item> SHINOBU_DEFAULT_BLACK_ITEM =
             ITEMS.register("shinobu_block_default_item",
-                    () -> new ShinobuBlockItem(BlockRegistry.SHINOBU_BLOCK.get()));
-
+                    () -> new ColorVariantBlockItem(
+                            BlockRegistry.SHINOBU_BLOCK.get(),
+                            ColorType.DEFAULT,  // 明确传递颜色参数
+                            new Item.Properties()
+                    ));
     // 黑色状态物品
     public static final RegistryObject<Item> SHINOBU_BLOCK_BLACK_ITEM =
             ITEMS.register("shinobu_block_black_item",

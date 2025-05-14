@@ -144,7 +144,7 @@ public class ShinobuBlock extends HorizontalDirectionalBlock {
         Item item = switch (color) {
             case BLACK -> ItemRegistry.SHINOBU_BLOCK_BLACK_ITEM.get();
             case PINK -> ItemRegistry.SHINOBU_BLOCK_PINK_ITEM.get();
-            default -> ItemRegistry.SHINOBU_BLOCK_DEFAULT_ITEM.get();
+            default -> ItemRegistry.SHINOBU_DEFAULT_BLACK_ITEM.get();
         };
         return Collections.singletonList(new ItemStack(item));
 
