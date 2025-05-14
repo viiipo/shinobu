@@ -1,9 +1,12 @@
 package com.shinobunoinu.shinobu.item;
 
+import com.shinobunoinu.shinobu.block.ShinobuBlock;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
 
 public class ShinobuBlockItem extends BlockItem {
 
@@ -23,17 +26,26 @@ public class ShinobuBlockItem extends BlockItem {
     // 它的功能是更改一些右键功能顺序
     @Override
     public InteractionResult place(BlockPlaceContext context) {
-        /* ------------------------- java小课堂 -------------------------
-        * 在java里'!'表示'非'，将后面的逻辑判断颠倒，在这里它颠倒了context.isSecondaryUseActive()
-        * 布尔值是计算机科学中的一个基本概念，表示“真”（True）或“假”（False）
-        * &&表示和，也是用于布尔值的逻辑运算符，意味前后值都为True代码才会执行if大括号里的内容
-        */
-        // context.isSecondaryUseActive() 这个方法返回一个布尔值，如果玩家使用潜行右键会返回true，有!反转就是潜行右键返回false，游戏里就是如果潜行右键就不会执行{}中的的return InteractionResult.FAIL使放置成功
-        // 设置这个判断目的在于让玩家手持该方块shift+右键时执行放置功能而不是其他功能比如说吃
-        // context.replacingClickedOnBlock() 在目标方块有'可替换'标签的时候才让放置，草、水方块都有这个标签，直接对着它们放置会替换掉
+        // 保留原有的Shift+右键放置检查
         if (!context.isSecondaryUseActive() && !context.replacingClickedOnBlock()) {
             return InteractionResult.FAIL;
         }
+
+        // 获取当前手持的物品
+        ItemStack stack = context.getItemInHand();
+
+        // 检查是否是颜色变体物品
+        if (stack.getItem() instanceof ColorVariantBlockItem colorItem) {
+            // 创建新的方块状态并设置颜色
+            BlockState stateToPlace = this.getBlock().defaultBlockState()
+                    .setValue(ShinobuBlock.COLOR, colorItem.getColor());
+
+            // 执行放置操作
+            if (this.placeBlock(context, stateToPlace)) {
+                return InteractionResult.sidedSuccess(context.getLevel().isClientSide);
+            }
+        }
+
         return super.place(context);
     }
 }

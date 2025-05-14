@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "shinobu:item/shinobu_block_item_black"
+  }
+}
