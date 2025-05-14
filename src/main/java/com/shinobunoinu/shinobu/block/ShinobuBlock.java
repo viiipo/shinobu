@@ -13,6 +13,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.DyeItem;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
@@ -138,15 +139,14 @@ public class ShinobuBlock extends HorizontalDirectionalBlock {
     // 关键方法：定义掉落物逻辑
     @Override
     public List<ItemStack> getDrops(BlockState state, LootParams.Builder params) {
-        // 创建物品堆栈
-        ItemStack stack = new ItemStack(ItemRegistry.Shinobu_BLOCK_ITEM.get());
+        // 根据颜色返回不同物品
+        ColorType color = state.getValue(COLOR);
+        Item item = switch (color) {
+            case BLACK -> ItemRegistry.SHINOBU_BLOCK_BLACK_ITEM.get();
+            case PINK -> ItemRegistry.SHINOBU_BLOCK_PINK_ITEM.get();
+            default -> ItemRegistry.SHINOBU_BLOCK_DEFAULT_ITEM.get();
+        };
+        return Collections.singletonList(new ItemStack(item));
 
-        // 保存颜色状态到NBT
-        CompoundTag tag = new CompoundTag();
-        tag.putString("color", state.getValue(COLOR).getSerializedName());
-        stack.setTag(tag);
 
-        return Collections.singletonList(stack);
-    }
-}
-
+    }}
