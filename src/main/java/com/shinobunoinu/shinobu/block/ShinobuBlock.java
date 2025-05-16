@@ -1,7 +1,11 @@
 package com.shinobunoinu.shinobu.block;
-
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
+import net.minecraft.world.item.DyeItem;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import com.shinobunoinu.shinobu.block.util.ColorType;
 import com.shinobunoinu.shinobu.block.util.Gesture;
+import com.shinobunoinu.shinobu.blockentity.DecoratedBlockEntity;
+import com.shinobunoinu.shinobu.item.DecorationItem;
 import com.shinobunoinu.shinobu.registry.ItemRegistry;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -21,10 +25,12 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.CollisionContext;
@@ -34,119 +40,181 @@ import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.LogicalSide;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
 
-/* 这种方块跟普通方块代码区别:
- * 1.继承的类从Block变成了HorizontalDirectionalBlock
- * 2.多了两个方法createBlockStateDefinition和getStateForPlacement
-*/
 public class ShinobuBlock extends HorizontalDirectionalBlock {
+
+    // 状态属性
+    public static final EnumProperty<Gesture> GESTURE = EnumProperty.create("gesture", Gesture.class);
+    public static final EnumProperty<ColorType> COLOR = EnumProperty.create("color", ColorType.class);
+
+    // 碰撞箱定义
+    private static final VoxelShape STAND_SHAPE = Block.box(5, 0, 4, 11, 15, 12);
+    private static final VoxelShape SIT_SHAPE = Block.box(5, 0, 4, 11, 12, 12);
+    private static final VoxelShape LIE_SHAPE = Block.box(3, 0, 3, 13, 7, 13);
 
     public ShinobuBlock() {
         super(Properties.of()
-                // ------------------------- 面渲染 -------------------------
-                // 如果没有这个参数，那么方块只会渲染玩家看到它的三个面，非完整方块必加，不然会直接透视,你可能会问，那我不管啥方块都加上不就完了，还真是，这个方法存在是为了优化性能的
                 .noOcclusion()
-                // ------------------------- 声音 -------------------------
-                // SoundType类是MC原版方块的音效库，偷懒的话直接从这调用就行，比如这里用的羊毛声音模板，把.WOOL删了重新打.符号，会提示你有哪些选择
-                // 自定义音效以后再讲
-                .sound(SoundType.WOOL));
+                .sound(SoundType.WOOL)
+                .requiresCorrectToolForDrops());
         registerDefaultState(this.stateDefinition.any()
+                .setValue(FACING, Direction.NORTH)
                 .setValue(GESTURE, Gesture.SIT)
                 .setValue(COLOR, ColorType.DEFAULT));
     }
 
-    // 这个方法就是给方块添加了一个方块状态FACING
+    // 注册状态属性
     @Override
-    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> pBuilder) {
-        pBuilder.add(FACING);
-        pBuilder.add(GESTURE);
-        pBuilder.add(COLOR);
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        builder.add(FACING, GESTURE, COLOR);
     }
 
-    // 这个方法是让玩家放置该方块的时候设定状态为FACING，FACING有东南西北四个值，context.getHorizontalDirection()这个参数就是玩家面朝方向，.getOpposite()把前面的方向取反，这样方块就能面朝玩家了
+    // 玩家放置方块时的方向
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
-        return this.defaultBlockState().setValue(FACING, context.getHorizontalDirection().getOpposite());
+        return this.defaultBlockState()
+                .setValue(FACING, context.getHorizontalDirection().getOpposite());
     }
-    private static final VoxelShape STAND_SHAPE = Block.box(5, 0, 4, 11, 15, 12); // 完整方块
-    private static final VoxelShape SIT_SHAPE = Block.box(5, 0, 4, 11, 12, 12);   // 半高方块
-    private static final VoxelShape LIE_SHAPE = Block.box(3, 0, 3, 13, 7, 13);   // 更矮的碰撞箱
 
+    // 碰撞箱逻辑
     @Override
     @SuppressWarnings("deprecation")
     public VoxelShape getShape(BlockState state, BlockGetter world, BlockPos pos, CollisionContext context) {
-        // 根据当前状态返回对应的碰撞箱
-        switch (state.getValue(GESTURE)) {
-            case SIT:
-                return SIT_SHAPE;
-            case LIE:
-                return LIE_SHAPE;
-            case STAND:
-            default:
-                return STAND_SHAPE;
-        }
+        return switch (state.getValue(GESTURE)) {
+            case SIT -> SIT_SHAPE;
+            case LIE -> LIE_SHAPE;
+            default -> STAND_SHAPE;
+        };
     }
 
-
-    // 新增属性
-    public static final EnumProperty<Gesture> GESTURE = EnumProperty.create("gesture", Gesture.class);
-    // 添加颜色属性
-    public static final EnumProperty<ColorType> COLOR = EnumProperty.create("color", ColorType.class);
-
-    // 保留原有的面朝玩家逻辑
-
+    // 综合交互逻辑
     @Override
-    // 合并后的交互逻辑
+    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
+        ItemStack stack = player.getItemInHand(hand);
 
-    public InteractionResult use(BlockState state, Level world, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
-        ItemStack itemStack = player.getItemInHand(hand);
+        // 1. 处理装饰物放置
+        if (stack.getItem() instanceof DecorationItem) {
+            return handleDecoration(level, pos, player, stack);
+        }
 
-        // 优先处理染料交互
-        if (itemStack.getItem() instanceof DyeItem dye) {
-            ColorType newColor = switch (dye.getDyeColor()) {
-                case WHITE -> ColorType.DEFAULT;
-                case BLACK -> ColorType.BLACK;
-                case PINK -> ColorType.PINK;
-                default -> null;
-            };
+        // 2. 处理Shift+右键取下装饰物
+        if (player.isShiftKeyDown() && stack.isEmpty()) {
+            return removeDecoration(level, pos, player);
+        }
 
-            if (newColor != null && state.getValue(COLOR) != newColor) {
-                if (!world.isClientSide) {
-                    world.setBlock(pos, state.setValue(COLOR, newColor), Block.UPDATE_ALL);
-                    world.playSound(null, pos, SoundEvents.DYE_USE, SoundSource.BLOCKS, 1.0F, 1.0F);
-                    if (!player.isCreative()) {
-                        itemStack.shrink(1);
-                    }
+        // 3. 处理染料染色
+        if (stack.getItem() instanceof DyeItem dye) {
+            return handleDye(state, level, pos, player, dye);
+        }
+
+        // 4. 处理空手切换姿势
+        if (stack.isEmpty()) {
+            return cycleGesture(state, level, pos);
+        }
+
+        return super.use(state, level, pos, player, hand, hit);
+    }   // 装饰物放置逻辑
+    private InteractionResult handleDecoration(Level level, BlockPos pos, Player player, ItemStack stack) {
+        if (!level.isClientSide) {
+            BlockEntity be = level.getBlockEntity(pos);
+            if (be instanceof DecoratedBlockEntity decoratedBlockEntity) {
+                if (!decoratedBlockEntity.hasHat()) {
+                    decoratedBlockEntity.setHat(true);
+                    stack.shrink(1);
+                    level.playSound(null, pos, SoundEvents.ARMOR_EQUIP_LEATHER, SoundSource.BLOCKS, 1.0f, 1.0f);
                 }
-                return InteractionResult.sidedSuccess(world.isClientSide);
             }
         }
-        // 空手交互处理原有姿势切换
-        else if (itemStack.isEmpty()) {
-            if (!world.isClientSide) {
-                BlockState newState = state.setValue(GESTURE, state.getValue(GESTURE).cycle());
-                world.setBlock(pos, newState, Block.UPDATE_ALL);
-                world.playSound(null, pos, SoundEvents.ITEM_FRAME_ROTATE_ITEM, SoundSource.BLOCKS, 0.8F, 1.0F);
-            }
-            return InteractionResult.sidedSuccess(world.isClientSide);
-        }
-
-        return super.use(state, world, pos, player, hand, hit);
+        return InteractionResult.sidedSuccess(level.isClientSide);
     }
-    // 关键方法：定义掉落物逻辑
+
+    // 取下装饰物逻辑
+    private InteractionResult removeDecoration(Level level, BlockPos pos, Player player) {
+        if (!level.isClientSide) {
+            BlockEntity be = level.getBlockEntity(pos);
+            if (be instanceof DecoratedBlockEntity decoratedBlockEntity) {
+                ItemStack hat = decoratedBlockEntity.removeHat();
+                if (!hat.isEmpty()) {
+                    player.addItem(hat);
+                    level.playSound(null, pos, SoundEvents.ITEM_FRAME_REMOVE_ITEM, SoundSource.BLOCKS, 1.0f, 1.0f);
+                }
+            }
+        }
+        return InteractionResult.sidedSuccess(level.isClientSide);
+    }
+
+    // 染料染色逻辑
+    private InteractionResult handleDye(BlockState state, Level level, BlockPos pos, Player player, DyeItem dye) {
+        ItemStack heldStack = player.getItemInHand(InteractionHand.MAIN_HAND); // 获取主手持有的物品堆栈
+
+        ColorType newColor = switch (dye.getDyeColor()) {
+            case WHITE -> ColorType.DEFAULT;
+            case BLACK -> ColorType.BLACK;
+            case PINK -> ColorType.PINK;
+            default -> null;
+        };
+
+        if (newColor != null && state.getValue(COLOR) != newColor) {
+            if (!level.isClientSide) {
+                level.setBlock(pos, state.setValue(COLOR, newColor), Block.UPDATE_ALL);
+                level.playSound(null, pos, SoundEvents.DYE_USE, SoundSource.BLOCKS, 1.0F, 1.0F);
+                if (!player.isCreative()) {
+                    heldStack.shrink(1); // 使用正确获取的 heldStack
+                }
+            }
+            return InteractionResult.sidedSuccess(level.isClientSide);
+        }
+        return InteractionResult.PASS;
+    }
+
+    // 切换姿势逻辑
+    private InteractionResult cycleGesture(BlockState state, Level level, BlockPos pos) {
+        if (!level.isClientSide) {
+            Gesture newGesture = state.getValue(GESTURE).cycle();
+            level.setBlock(pos, state.setValue(GESTURE, newGesture), Block.UPDATE_ALL);
+            level.playSound(null, pos, SoundEvents.ITEM_FRAME_ROTATE_ITEM, SoundSource.BLOCKS, 0.8F, 1.0F);
+        }
+        return InteractionResult.sidedSuccess(level.isClientSide);
+    }
+
+    // 掉落物逻辑（方案一：通过BLOCK_ENTITY参数）
     @Override
     public List<ItemStack> getDrops(BlockState state, LootParams.Builder params) {
-        // 根据颜色返回不同物品
-        ColorType color = state.getValue(COLOR);
-        Item item = switch (color) {
+        List<ItemStack> drops = new ArrayList<>();
+
+        // 添加基础方块
+        drops.add(createBaseStack(state));
+
+        // 添加帽子
+        BlockEntity be = params.getParameter(LootContextParams.BLOCK_ENTITY);
+        if (be instanceof DecoratedBlockEntity decoratedBlockEntity) {
+            if (decoratedBlockEntity.hasHat()) {
+                drops.add(new ItemStack(ItemRegistry.DECORATION_HAT.get()));
+            }
+        }
+
+        return drops;
+    }
+
+    // 创建基础方块掉落物
+    private ItemStack createBaseStack(BlockState state) {
+        ItemStack stack = new ItemStack(getColorItem(state.getValue(COLOR)));
+        CompoundTag tag = new CompoundTag();
+        tag.putString("color", state.getValue(COLOR).getSerializedName());
+        stack.setTag(tag);
+        return stack;
+    }
+
+    // 颜色到物品的映射
+    private Item getColorItem(ColorType color) {
+        return switch (color) {
             case BLACK -> ItemRegistry.SHINOBU_BLOCK_BLACK_ITEM.get();
             case PINK -> ItemRegistry.SHINOBU_BLOCK_PINK_ITEM.get();
             default -> ItemRegistry.SHINOBU_BLOCK_DEFAULT_ITEM.get();
         };
-        return Collections.singletonList(new ItemStack(item));
-
-
-    }}
+    }
+}

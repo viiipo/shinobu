@@ -36,5 +36,7 @@ public class ItemRegistry {
                             ColorType.PINK,
                             new Item.Properties()
                     ));
+    public static final RegistryObject<Item> DECORATION_HAT = ITEMS.register("decoration_hat",
+            () -> new DecorationItem(new Item.Properties().stacksTo(1)));
 
 }

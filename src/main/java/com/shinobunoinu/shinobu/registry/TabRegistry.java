@@ -39,6 +39,7 @@ public class TabRegistry {
             // 格式：event.accept(new ItemStack(物品注册项.get()));
 
             event.accept(new ItemStack(ItemRegistry.SHINOBU_BLOCK_DEFAULT_ITEM.get()));
+            event.accept(new ItemStack(ItemRegistry.DECORATION_HAT.get()));
 
             // ====================== 批量添加方式 ======================
             // 如果要添加多个物品，可以使用循环：
