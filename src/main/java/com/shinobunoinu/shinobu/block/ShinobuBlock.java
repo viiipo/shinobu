@@ -38,6 +38,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Stream;
 
+import static com.shinobunoinu.shinobu.registry.ItemRegistry.getColorVariantItem;
+
 /* 这种方块跟普通方块代码区别:
  * 1.继承的类从Block变成了HorizontalDirectionalBlock
  * 2.多了两个方法createBlockStateDefinition和getStateForPlacement
@@ -144,9 +146,16 @@ public class ShinobuBlock extends HorizontalDirectionalBlock {
         Item item = switch (color) {
             case BLACK -> ItemRegistry.SHINOBU_BLOCK_BLACK_ITEM.get();
             case PINK -> ItemRegistry.SHINOBU_BLOCK_PINK_ITEM.get();
-            default -> ItemRegistry.SHINOBU_DEFAULT_BLACK_ITEM.get();
+            default -> ItemRegistry.SHINOBU_BLOCK_DEFAULT_ITEM.get();
         };
         return Collections.singletonList(new ItemStack(item));
 
+
+    }
+    @Override
+    public ItemStack getCloneItemStack(BlockGetter level, BlockPos pos, BlockState state) {
+        // 从方块状态中获取颜色值
+        ColorType color = state.getValue(COLOR);
+        return new ItemStack(ItemRegistry.getColorVariantItem(color));
 
     }}

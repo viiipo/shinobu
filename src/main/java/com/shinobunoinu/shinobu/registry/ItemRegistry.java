@@ -15,7 +15,7 @@ public class ItemRegistry {
 
 
     // 默认状态物品
-    public static final RegistryObject<Item> SHINOBU_DEFAULT_BLACK_ITEM =
+    public static final RegistryObject<Item> SHINOBU_BLOCK_DEFAULT_ITEM =
             ITEMS.register("shinobu_block_default_item",
                     () -> new ColorVariantBlockItem(
                             BlockRegistry.SHINOBU_BLOCK.get(),
@@ -39,5 +39,11 @@ public class ItemRegistry {
                             ColorType.PINK,
                             new Item.Properties()
                     ));
-
+    public static Item getColorVariantItem(ColorType color) {
+        return switch (color) {
+            case BLACK -> SHINOBU_BLOCK_BLACK_ITEM.get();
+            case PINK -> SHINOBU_BLOCK_PINK_ITEM.get();
+            default -> SHINOBU_BLOCK_DEFAULT_ITEM.get();
+        };
+    }
 }

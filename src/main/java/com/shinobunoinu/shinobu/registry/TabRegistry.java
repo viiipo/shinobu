@@ -25,7 +25,7 @@ public class TabRegistry {
     public static final RegistryObject<CreativeModeTab> MAIN = TABS.register(
             "assets/shinobu", // 标签ID（建议保持与MODID一致）
             () -> CreativeModeTab.builder()
-                    .icon(() -> new ItemStack(ItemRegistry.SHINOBU_DEFAULT_BLACK_ITEM.get()))
+                    .icon(() -> new ItemStack(ItemRegistry.SHINOBU_BLOCK_DEFAULT_ITEM.get()))
                     .title(Component.translatable("shinobu")) // ▶▶▶ 修改翻译键
                     .build()
     );
@@ -38,7 +38,7 @@ public class TabRegistry {
             // ====================== 单个物品添加方式 ======================
             // 格式：event.accept(new ItemStack(物品注册项.get()));
 
-            event.accept(new ItemStack(ItemRegistry.SHINOBU_DEFAULT_BLACK_ITEM.get()));
+            event.accept(new ItemStack(ItemRegistry.SHINOBU_BLOCK_DEFAULT_ITEM.get()));
 
             // ====================== 批量添加方式 ======================
             // 如果要添加多个物品，可以使用循环：
