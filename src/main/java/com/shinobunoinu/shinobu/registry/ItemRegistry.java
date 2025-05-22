@@ -3,6 +3,9 @@ package com.shinobunoinu.shinobu.registry;
 import com.shinobunoinu.shinobu.Shinobu;
 import com.shinobunoinu.shinobu.block.util.ColorType;
 import com.shinobunoinu.shinobu.item.*;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -12,7 +15,20 @@ public class ItemRegistry {
     // 物品注册器（自动对接Forge系统，不要修改这个变量）
     public static final DeferredRegister<Item> ITEMS =
             DeferredRegister.create(ForgeRegistries.ITEMS, Shinobu.MODID);
-
+    // 可食用甜甜圈（添加食物属性和特殊效果）
+    public static final RegistryObject<Item> DONUT = ITEMS.register("donut",
+            () -> new Item(new Item.Properties()
+                    .food(new FoodProperties.Builder()
+                            .nutrition(6)                // 恢复6点饥饿值（3鸡腿）
+                            .saturationMod(1.2f)         // 饱和度加成
+                            .effect(
+                                    () -> new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 200, 1), // 给予速度II效果10秒
+                                    1.0f                      // 触发概率100%
+                            )
+                            .alwaysEat()                // 允许满饥饿时食用
+                            .build()
+                    )
+            ));
 
     // 默认状态物品
     public static final RegistryObject<Item> SHINOBU_BLOCK_DEFAULT_ITEM =
