@@ -17,13 +17,9 @@ public class TabRegistry {
     public static final DeferredRegister<CreativeModeTab> TABS =
             DeferredRegister.create(Registries.CREATIVE_MODE_TAB, Shinobu.MODID);
 
-    /* ------------------------- 主创造标签配置 -------------------------
-     * 图标设置：.icon() 设置创造标签的展示图标
-     * 标题设置：.title() 设置创造标签的显示名称（需配合翻译文件）
-     * 排序规则：默认按注册顺序排列，可通过.displayItems()自定义
-     */
+
     public static final RegistryObject<CreativeModeTab> MAIN = TABS.register(
-            "assets/shinobu", // 标签ID（建议保持与MODID一致）
+            "shinobu", // 标签ID（建议保持与MODID一致）
             () -> CreativeModeTab.builder()
                     .icon(() -> new ItemStack(ItemRegistry.SHINOBU_BLOCK_DEFAULT_ITEM.get()))
                     .title(Component.translatable("shinobu")) // ▶▶▶ 修改翻译键
@@ -40,16 +36,6 @@ public class TabRegistry {
 
             event.accept(new ItemStack(ItemRegistry.SHINOBU_BLOCK_DEFAULT_ITEM.get()));
             event.accept(new ItemStack(ItemRegistry.DONUT.get()));
-            // ====================== 批量添加方式 ======================
-            // 如果要添加多个物品，可以使用循环：
-            // ItemRegistry.ITEMS.getEntries().forEach(item -> {
-            //     event.accept(new ItemStack(item.get()));
-            // });
-        }
 
-        // ▼▼▼ 如需添加其他子标签（示例：食物分类） ▼▼▼
-        // else if (event.getTab() == FOOD_TAB.get()) {
-        //     event.accept(...);
-        // }
-    }
-}
+        }
+    }}

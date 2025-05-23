@@ -2,15 +2,24 @@ package com.shinobunoinu.shinobu.client.model.entity;
 
 import com.shinobunoinu.shinobu.entity.ShinobuEntity;
 import net.minecraft.resources.ResourceLocation;
+import software.bernie.geckolib.model.GeoModel;
+
+public class ShinobuModel extends GeoModel<ShinobuEntity> {
+    @Override
+    public ResourceLocation getModelResource(ShinobuEntity entity) {
+        return new ResourceLocation("shinobu", "geo/shinobu.geo.json");
 
 
-import software.bernie.geckolib.GeckoLib;
-import software.bernie.geckolib.model.DefaultedEntityGeoModel;
+    }
 
+    @Override
+    public ResourceLocation getTextureResource(ShinobuEntity entity) {
+        return new ResourceLocation("shinobu", "textures/entity/shinobu.png");
+    }
 
-public class ShinobuModel extends DefaultedEntityGeoModel<ShinobuEntity> {
-	// We use the alternate super-constructor here to tell the model it should handle head-turning for us
-	public ShinobuModel() {
-		super(new ResourceLocation(GeckoLib.MOD_ID, "bat"), true);
-	}
+    @Override
+    public ResourceLocation getAnimationResource(ShinobuEntity entity) {
+        return new ResourceLocation("shinobu", "animations/shinobu.animation.json");
+
+    }
 }
