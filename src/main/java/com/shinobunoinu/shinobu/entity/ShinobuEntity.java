@@ -7,6 +7,7 @@ import com.shinobunoinu.shinobu.registry.ParticleTypeRegistry;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -203,7 +204,12 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
     public boolean isLying() {
         return this.entityData.get(DATA_LYING);
     }
-
+    @Override
+    public boolean doHurtTarget(Entity target) {
+        boolean result = super.doHurtTarget(target);
+        this.swing(InteractionHand.MAIN_HAND); // ✅ 触发挥动动作（会设置 this.swinging = true）
+        return result;
+    }
     // 繁殖禁用
     @Nullable
     @Override
@@ -215,10 +221,15 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
         controllers.add(new AnimationController<>(this, "controller", 10, state -> {
+
+
             if (this.isLying()) {
                 return state.setAndContinue(RawAnimation.begin().thenLoop("lie_down"));
             } else if (this.isSitting()) {
                 return state.setAndContinue(RawAnimation.begin().thenLoop("sit"));
+            } else if (this.swinging) {
+                this.swinging = false;
+                return state.setAndContinue(RawAnimation.begin().then("attack", Animation.LoopType.PLAY_ONCE));
             } else if (state.isMoving()) {
                 return state.setAndContinue(RawAnimation.begin().thenLoop("run"));
             } else {
@@ -227,7 +238,7 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
         }));
     }
 
-    @Override
+        @Override
     public AnimatableInstanceCache getAnimatableInstanceCache() {
         return this.cache;
     }
@@ -262,6 +273,36 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
         this.entityData.set(DATA_HAS_HAT, !stack.isEmpty());
 
         System.out.println("[DEBUG] setHeadArmor 设置帽子为：" + stack + " -> hasHat=" + !stack.isEmpty());
+    }
+    @Override
+    public void addAdditionalSaveData(CompoundTag tag) {
+        super.addAdditionalSaveData(tag);
+
+        // 保存坐下、躺下状态
+        tag.putBoolean("Sitting", isSitting());
+        tag.putBoolean("Lying", isLying());
+
+        // 保存帽子
+        if (!headArmor.isEmpty()) {
+            tag.put("HeadArmor", headArmor.save(new CompoundTag()));
+        }
+    }
+
+    @Override
+    public void readAdditionalSaveData(CompoundTag tag) {
+        super.readAdditionalSaveData(tag);
+
+        // 恢复坐下、躺下状态
+        setSitting(tag.getBoolean("Sitting"));
+        setLying(tag.getBoolean("Lying"));
+
+        // 恢复帽子
+        if (tag.contains("HeadArmor", Tag.TAG_COMPOUND)) {
+            ItemStack loaded = ItemStack.of(tag.getCompound("HeadArmor"));
+            setHeadArmor(loaded);
+        } else {
+            setHeadArmor(ItemStack.EMPTY); // 防止 NULL
+        }
     }}
 
 

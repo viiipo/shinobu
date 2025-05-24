@@ -39,7 +39,8 @@ public class ShinobuModel extends GeoModel<ShinobuEntity> {
 
         CoreGeoBone hat = getAnimationProcessor().getBone("head_hat");
         if (hat != null) {
-            System.out.println("[DEBUG] 模型读取 CLIENT_HAS_HAT = " + ShinobuEntity.CLIENT_HAS_HAT);
             hat.setHidden(!ShinobuEntity.CLIENT_HAS_HAT);
+
         }
-    }}
+    }
+}
