@@ -29,6 +29,9 @@ public class ItemRegistry {
                             .build()
                     )
             ));
+    // 帽子物品
+    public static final RegistryObject<Item> SHINOBU_HAT = ITEMS.register("shinobu_hat",
+            () -> new ShinobuHatItem(new ShinobuArmorMaterial(), new Item.Properties()));
 
     // 默认状态物品
     public static final RegistryObject<Item> SHINOBU_BLOCK_DEFAULT_ITEM =

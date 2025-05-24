@@ -36,6 +36,7 @@ public class TabRegistry {
 
             event.accept(new ItemStack(ItemRegistry.SHINOBU_BLOCK_DEFAULT_ITEM.get()));
             event.accept(new ItemStack(ItemRegistry.DONUT.get()));
+            event.accept(new ItemStack(ItemRegistry.SHINOBU_HAT.get()));
 
         }
     }}

@@ -1,6 +1,7 @@
 package com.shinobunoinu.shinobu.entity;
 
 import com.shinobunoinu.shinobu.entity.goal.ConditionalLookAtPlayerGoal;
+import com.shinobunoinu.shinobu.item.ShinobuHatItem;
 import com.shinobunoinu.shinobu.registry.ItemRegistry;
 import com.shinobunoinu.shinobu.registry.ParticleTypeRegistry;
 import net.minecraft.core.BlockPos;
@@ -31,6 +32,8 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.Nullable;
 import software.bernie.geckolib.animatable.GeoEntity;
 import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
@@ -40,11 +43,14 @@ import software.bernie.geckolib.util.GeckoLibUtil;
 import java.util.UUID;
 
 public class ShinobuEntity extends TamableAnimal implements GeoEntity {
+    @OnlyIn(Dist.CLIENT)
+    public static boolean CLIENT_HAS_HAT = false;
 
     private static final EntityDataAccessor<Boolean> DATA_SITTING =
             SynchedEntityData.defineId(ShinobuEntity.class, EntityDataSerializers.BOOLEAN);
     private static final EntityDataAccessor<Boolean> DATA_LYING =
             SynchedEntityData.defineId(ShinobuEntity.class, EntityDataSerializers.BOOLEAN);
+    private int zzzParticleCooldown = 0;  // 粒子冷却时间
 
     private int sittingTime = 0;
 
@@ -53,7 +59,8 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
     public ShinobuEntity(EntityType<? extends TamableAnimal> type, Level level) {
         super(type, level);
     }
-
+    private static final EntityDataAccessor<Boolean> DATA_HAS_HAT =
+            SynchedEntityData.defineId(ShinobuEntity.class, EntityDataSerializers.BOOLEAN);
     // 属性定义
     public static AttributeSupplier.Builder createAttributes() {
         return Mob.createMobAttributes()
@@ -68,6 +75,7 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
         super.defineSynchedData();
         this.entityData.define(DATA_SITTING, false);
         this.entityData.define(DATA_LYING, false);
+        this.entityData.define(DATA_HAS_HAT, false); // ✅ 注册帽子同步字段
     }
 
     @Override
@@ -86,20 +94,25 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
 
         // 客户端才显示粒子
         if (level().isClientSide && isAsleep()) {
-            // 随机生成一点浮动效果
-            double offsetX = (random.nextDouble() - 0.5D) * 0.3;
-            double offsetZ = (random.nextDouble() - 0.5D) * 0.3;
-            double x = this.getX() + offsetX;
-            double y = this.getY() + 1.2D; // 头顶上
-            double z = this.getZ() + offsetZ;
+            // 每5个游戏刻（ticks）生成一次粒子
+            if (zzzParticleCooldown <= 0) {
+                double offsetX = (random.nextDouble() - 0.5D) * 0.3;
+                double offsetZ = (random.nextDouble() - 0.5D) * 0.3;
+                double x = this.getX() + offsetX;
+                double y = this.getY() + 0.8D; // 头顶上
+                double z = this.getZ() + offsetZ;
 
-            // 缓缓上升的速度
-            double xSpeed = 0.0D;
-            double ySpeed = 0.02D; // 上升速度
-            double zSpeed = 0.0D;
+                double xSpeed = 0.0D;
+                double ySpeed = 0.0001D; // 上升速度
+                double zSpeed = 0.0D;
 
-            // 添加粒子（注意要用 motion 参数）
-            level().addParticle(ParticleTypeRegistry.ZZZ_PARTICLE.get(), x, y, z, xSpeed, ySpeed, zSpeed);
+                // 添加粒子（注意要用 motion 参数）
+                level().addParticle(ParticleTypeRegistry.ZZZ_PARTICLE.get(), x, y, z, xSpeed, ySpeed, zSpeed);
+
+                zzzParticleCooldown = 20;  // 每5个ticks减少一个粒子
+            } else {
+                zzzParticleCooldown--; // 减少计数，冷却时间
+            }
         }
     }
     // 行为目标
@@ -120,9 +133,11 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
     @Override
     public InteractionResult mobInteract(Player player, InteractionHand hand) {
         ItemStack itemstack = player.getItemInHand(hand);
+        boolean isShift = player.isShiftKeyDown();
 
         if (level().isClientSide) return InteractionResult.SUCCESS;
 
+        // --- 驯服逻辑 ---
         if (!isTame() && itemstack.is(ItemRegistry.DONUT.get())) {
             if (!player.getAbilities().instabuild) itemstack.shrink(1);
             if (random.nextFloat() < 0.7f) {
@@ -131,13 +146,33 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
                 level().broadcastEntityEvent(this, (byte) 7); // ❤️ 粒子
                 setSitting(true);
             } else {
-                level().broadcastEntityEvent(this, (byte) 6); // 烟雾
+                level().broadcastEntityEvent(this, (byte) 6); // ❌ 粒子
             }
             return InteractionResult.CONSUME;
         }
 
+        // --- 仅驯服并由当前玩家控制时才能交互 ---
         if (isTame() && isOwnedBy(player)) {
-            // 切换坐下、跟随
+            // --- 取下帽子：Shift + 空手 ---
+            if (isShift && itemstack.isEmpty() && hasHeadArmor()) {
+                player.addItem(getHeadArmor().copy());
+                setHeadArmor(ItemStack.EMPTY);
+                player.displayClientMessage(Component.literal("Shinobu took off her hat."), true);
+                return InteractionResult.CONSUME;
+            }
+
+            // --- 戴上帽子：手上是帽子，当前没有帽子 ---
+            if (!hasHeadArmor() && itemstack.getItem() instanceof ShinobuHatItem) {
+                System.out.println("[DEBUG] 检测到玩家手持帽子，准备戴上");
+                setHeadArmor(itemstack.copyWithCount(1));
+                if (!player.getAbilities().instabuild) itemstack.shrink(1);
+                player.displayClientMessage(Component.literal("Shinobu equipped the hat!"), true);
+                return InteractionResult.CONSUME;
+
+            }
+
+
+            // --- 其他情况：切换坐/站 ---
             if (isSitting()) {
                 setSitting(false);
                 player.displayClientMessage(Component.literal("Shinobu is Following"), true);
@@ -150,7 +185,6 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
 
         return super.mobInteract(player, hand);
     }
-
 
     public void setSitting(boolean sitting) {
         super.setOrderedToSit(sitting);
@@ -211,4 +245,24 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
     public boolean isAsleep() {
         return this.isLying();
     }
-}
+    private ItemStack headArmor = ItemStack.EMPTY;
+
+    // ✅ 改为从 entityData 中读取同步状态
+    public boolean hasHeadArmor() {
+        return this.entityData.get(DATA_HAS_HAT);
+    }
+
+    public ItemStack getHeadArmor() {
+        return headArmor;
+    }
+
+    // ✅ 设置本地字段 + 同步状态给客户端
+    public void setHeadArmor(ItemStack stack) {
+        this.headArmor = stack;
+        this.entityData.set(DATA_HAS_HAT, !stack.isEmpty());
+
+        System.out.println("[DEBUG] setHeadArmor 设置帽子为：" + stack + " -> hasHat=" + !stack.isEmpty());
+    }}
+
+
+
