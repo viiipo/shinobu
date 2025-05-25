@@ -4,8 +4,6 @@ import com.shinobunoinu.shinobu.entity.goal.ConditionalLookAtPlayerGoal;
 import com.shinobunoinu.shinobu.item.ShinobuHatItem;
 import com.shinobunoinu.shinobu.registry.ItemRegistry;
 import com.shinobunoinu.shinobu.registry.ParticleTypeRegistry;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
@@ -13,37 +11,81 @@ import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.*;
 import net.minecraft.world.entity.ai.goal.target.OwnerHurtByTargetGoal;
 import net.minecraft.world.entity.ai.goal.target.OwnerHurtTargetGoal;
-import net.minecraft.world.entity.animal.Animal;
-import net.minecraft.world.entity.animal.Wolf;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.Nullable;
 import software.bernie.geckolib.animatable.GeoEntity;
 import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
 import software.bernie.geckolib.core.animation.*;
+import software.bernie.geckolib.core.object.PlayState;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.UUID;
 
 public class ShinobuEntity extends TamableAnimal implements GeoEntity {
+    private final RawAnimation IDLING_ANIMATION = RawAnimation.begin().then("idle", Animation.LoopType.LOOP);
+    private final RawAnimation MOVING_ANIMATION = RawAnimation.begin().then("run", Animation.LoopType.LOOP);
+    private final RawAnimation SITTING_ANIMATION = RawAnimation.begin().then("sit", Animation.LoopType.LOOP);
+    private final RawAnimation LYING_ANIMATION = RawAnimation.begin().then("lie_down", Animation.LoopType.LOOP);
+    private final RawAnimation ATTACK_ANIMATION = RawAnimation.begin().then("attack", Animation.LoopType.PLAY_ONCE);
+    protected static final byte ANIMATION_IDLE = 0;
+    protected static final byte ANIMATION_MOVE = 1;
+    protected static final byte ANIMATION_SIT = 2;
+    protected static final byte ANIMATION_LYING = 3;
+    protected static final byte ANIMATION_ATTACK = 4;
+    protected static final EntityDataAccessor<Byte> ANIMATION = SynchedEntityData.defineId(ShinobuEntity.class, EntityDataSerializers.BYTE);
+    private static final EntityDataAccessor<Integer> ATTACK_ANIM_TIMER = SynchedEntityData.defineId(ShinobuEntity.class, EntityDataSerializers.INT);
+    public final int ATTACK_ANIMATION_DURATION = 20;
+
+    public byte getAnimation() {
+        return entityData.get(ANIMATION);
+    }
+
+    public void setAnimation(byte animation) {
+        entityData.set(ANIMATION, animation);
+    }
+
+    public int getAttackAnimTimer() {
+        return (Integer) this.entityData.get(ATTACK_ANIM_TIMER);
+    }
+
+    public void setAttackAnimTimer(int time) {
+        this.entityData.set(ATTACK_ANIM_TIMER, time);
+    }
+
+    @Override
+    protected void customServerAiStep() {
+        if (this.getAttackAnimTimer() == ATTACK_ANIMATION_DURATION) {
+            setAnimation(ANIMATION_ATTACK);
+        }
+
+        if (this.getAttackAnimTimer() > 0) {
+            int animTimer = this.getAttackAnimTimer() - 1;
+            this.setAttackAnimTimer(animTimer);
+        } else if (getAnimation() == ANIMATION_ATTACK) {
+            setAnimation(ANIMATION_IDLE);
+        }
+        super.customServerAiStep();
+    }
+
+    @Override
+    public boolean doHurtTarget(Entity target) {
+        setAttackAnimTimer(20);
+        return super.doHurtTarget(target);
+    }
+
     @OnlyIn(Dist.CLIENT)
     public static boolean CLIENT_HAS_HAT = false;
 
@@ -77,6 +119,8 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
         this.entityData.define(DATA_SITTING, false);
         this.entityData.define(DATA_LYING, false);
         this.entityData.define(DATA_HAS_HAT, false); // ✅ 注册帽子同步字段
+        this.entityData.define(ANIMATION, ANIMATION_IDLE);
+        this.entityData.define(ATTACK_ANIM_TIMER, 0);
     }
 
     @Override
@@ -94,7 +138,7 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
         }
 
         // 客户端才显示粒子
-        if (level().isClientSide && isAsleep()) {
+        if (level().isClientSide && isLying()) {
             // 每5个游戏刻（ticks）生成一次粒子
             if (zzzParticleCooldown <= 0) {
                 double offsetX = (random.nextDouble() - 0.5D) * 0.3;
@@ -164,12 +208,10 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
 
             // --- 戴上帽子：手上是帽子，当前没有帽子 ---
             if (!hasHeadArmor() && itemstack.getItem() instanceof ShinobuHatItem) {
-                System.out.println("[DEBUG] 检测到玩家手持帽子，准备戴上");
                 setHeadArmor(itemstack.copyWithCount(1));
                 if (!player.getAbilities().instabuild) itemstack.shrink(1);
                 player.displayClientMessage(Component.literal("Shinobu equipped the hat!"), true);
                 return InteractionResult.CONSUME;
-
             }
 
 
@@ -189,6 +231,11 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
 
     public void setSitting(boolean sitting) {
         super.setOrderedToSit(sitting);
+        if(sitting) {
+            setAnimation(ANIMATION_SIT);
+        } else {
+            setAnimation(ANIMATION_IDLE);
+        }
         this.entityData.set(DATA_SITTING, sitting);
         if (!sitting) setLying(false); // 站起时取消躺下
     }
@@ -198,17 +245,15 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
     }
 
     public void setLying(boolean lying) {
+        if(lying) {
+            setAnimation(ANIMATION_LYING);
+        }
+
         this.entityData.set(DATA_LYING, lying);
     }
 
     public boolean isLying() {
         return this.entityData.get(DATA_LYING);
-    }
-    @Override
-    public boolean doHurtTarget(Entity target) {
-        boolean result = super.doHurtTarget(target);
-        this.swing(InteractionHand.MAIN_HAND); // ✅ 触发挥动动作（会设置 this.swinging = true）
-        return result;
     }
     // 繁殖禁用
     @Nullable
@@ -217,24 +262,37 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
         return null;
     }
 
+
     // Geckolib 动画控制器
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
-        controllers.add(new AnimationController<>(this, "controller", 10, state -> {
-
-
-            if (this.isLying()) {
-                return state.setAndContinue(RawAnimation.begin().thenLoop("lie_down"));
-            } else if (this.isSitting()) {
-                return state.setAndContinue(RawAnimation.begin().thenLoop("sit"));
-            } else if (this.swinging) {
-                this.swinging = false;
-                return state.setAndContinue(RawAnimation.begin().then("attack", Animation.LoopType.PLAY_ONCE));
-            } else if (state.isMoving()) {
-                return state.setAndContinue(RawAnimation.begin().thenLoop("run"));
-            } else {
-                return state.setAndContinue(RawAnimation.begin().thenLoop("idle"));
+        controllers.add(new AnimationController<>(this, "main", 0, state -> {
+            if(getAnimation() == ANIMATION_ATTACK && getAttackAnimTimer() == (ATTACK_ANIMATION_DURATION - 1) && isAggressive() && !(this.isDeadOrDying() || this.getHealth() < 0.01)) {
+                setAttackAnimTimer(ATTACK_ANIMATION_DURATION - 2);
+                state.getController().setAnimation(ATTACK_ANIMATION);
+                return PlayState.CONTINUE;
             }
+            if (((getAnimation() == ANIMATION_MOVE || state.isMoving()) && getAttackAnimTimer() <= 0)) {
+                state.getController().setAnimation(MOVING_ANIMATION);
+                return PlayState.CONTINUE;
+            }
+            if (getAnimation() == ANIMATION_IDLE && getAttackAnimTimer() <= 0 && !state.isMoving()) {
+                state.getController().setAnimation(IDLING_ANIMATION);
+                return PlayState.CONTINUE;
+            }
+            if (getAnimation() == ANIMATION_SIT || isSitting()) {
+                state.getController().setAnimation(SITTING_ANIMATION);
+                return PlayState.CONTINUE;
+            }
+            if (getAnimation() == ANIMATION_LYING || isLying()) {
+                state.getController().setAnimation(SITTING_ANIMATION);
+                return PlayState.CONTINUE;
+            }
+            if (getAnimation() == ANIMATION_IDLE && getAttackAnimTimer() > 0) {
+                setAnimation(ANIMATION_ATTACK);
+                return PlayState.STOP;
+            }
+            return PlayState.CONTINUE;
         }));
     }
 
@@ -253,6 +311,7 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
     public boolean checkSpawnObstruction(LevelReader levelreader) {
         return true;
     }
+
     public boolean isAsleep() {
         return this.isLying();
     }
@@ -271,8 +330,6 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
     public void setHeadArmor(ItemStack stack) {
         this.headArmor = stack;
         this.entityData.set(DATA_HAS_HAT, !stack.isEmpty());
-
-        System.out.println("[DEBUG] setHeadArmor 设置帽子为：" + stack + " -> hasHat=" + !stack.isEmpty());
     }
     @Override
     public void addAdditionalSaveData(CompoundTag tag) {
