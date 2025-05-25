@@ -1,0 +1,92 @@
+{
+  "credit": "Made with Blockbench",
+  "parent": "builtin/entity",
+  "texture_size": [
+    128,
+    128
+  ],
+  "display": {
+    "thirdperson_righthand": {
+      "rotation": [
+        172.75,
+        0,
+        0
+      ],
+      "translation": [
+        -0.5,
+        39.25,
+        -3.25
+      ]
+    },
+    "thirdperson_lefthand": {
+      "rotation": [
+        -178,
+        0,
+        0
+      ],
+      "translation": [
+        0,
+        39.75,
+        3.25
+      ]
+    },
+    "firstperson_righthand": {
+      "rotation": [
+        130.25,
+        0,
+        0
+      ],
+      "translation": [
+        3.75,
+        24.75,
+        -29.75
+      ]
+    },
+    "firstperson_lefthand": {
+      "rotation": [
+        120.25,
+        0,
+        0
+      ],
+      "translation": [
+        1.25,
+        21.5,
+        -31.5
+      ]
+    },
+    "gui": {
+      "rotation": [
+        159.48,
+        57.17,
+        -32.98
+      ],
+      "translation": [
+        -6.25,
+        14,
+        0
+      ]
+    },
+    "head": {
+      "translation": [
+        0,
+        -28.25,
+        0
+      ]
+    },
+    "fixed": {
+      "rotation": [
+        0,
+        -86.75,
+        0
+      ],
+      "translation": [
+        0,
+        -25.75,
+        -0.5
+      ]
+    }
+  },
+  "textures": {
+    "particle": "item/shinobu_block"
+  }
+}

@@ -32,8 +32,6 @@ import software.bernie.geckolib.core.animation.*;
 import software.bernie.geckolib.core.object.PlayState;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
-import java.util.UUID;
-
 public class ShinobuEntity extends TamableAnimal implements GeoEntity {
     private final RawAnimation IDLING_ANIMATION = RawAnimation.begin().then("idle", Animation.LoopType.LOOP);
     private final RawAnimation MOVING_ANIMATION = RawAnimation.begin().then("run", Animation.LoopType.LOOP);
@@ -43,7 +41,7 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
     protected static final byte ANIMATION_IDLE = 0;
     protected static final byte ANIMATION_MOVE = 1;
     protected static final byte ANIMATION_SIT = 2;
-    protected static final byte ANIMATION_LYING = 3;
+    protected static final byte ANIMATION_LIE = 3;
     protected static final byte ANIMATION_ATTACK = 4;
     protected static final EntityDataAccessor<Byte> ANIMATION = SynchedEntityData.defineId(ShinobuEntity.class, EntityDataSerializers.BYTE);
     private static final EntityDataAccessor<Integer> ATTACK_ANIM_TIMER = SynchedEntityData.defineId(ShinobuEntity.class, EntityDataSerializers.INT);
@@ -246,7 +244,7 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
 
     public void setLying(boolean lying) {
         if(lying) {
-            setAnimation(ANIMATION_LYING);
+            setAnimation(ANIMATION_LIE);
         }
 
         this.entityData.set(DATA_LYING, lying);
@@ -280,7 +278,7 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
                 state.getController().setAnimation(IDLING_ANIMATION);
                 return PlayState.CONTINUE;
             }
-            if (getAnimation() == ANIMATION_LYING || isLying()) {
+            if (getAnimation() == ANIMATION_LIE || isLying()) {
                 state.getController().setAnimation(LYING_ANIMATION);
                 return PlayState.CONTINUE;
             }

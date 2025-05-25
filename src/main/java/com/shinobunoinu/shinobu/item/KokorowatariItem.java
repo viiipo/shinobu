@@ -27,15 +27,15 @@ public class KokorowatariItem extends SwordItem implements GeoItem {
     @Override
     public void initializeClient(Consumer<IClientItemExtensions> consumer) {
         consumer.accept(new IClientItemExtensions() {
-            private KokorowatariRenderer renderer = null;
+            private KokorowatariRenderer renderer;
 
             // 确保返回的是正确的渲染器
-
-            public BlockEntityWithoutLevelRenderer getItemStackRenderer() {
+@Override
+            public BlockEntityWithoutLevelRenderer getCustomRenderer() {
                 if (this.renderer == null) {
                     this.renderer = new KokorowatariRenderer();  // 初始化渲染器
                 }
-                System.out.println("[DEBUG] KokorowatariRenderer created");
+
                 return this.renderer;
             }
         });
