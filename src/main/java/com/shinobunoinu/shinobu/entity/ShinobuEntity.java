@@ -280,14 +280,15 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
                 state.getController().setAnimation(IDLING_ANIMATION);
                 return PlayState.CONTINUE;
             }
+            if (getAnimation() == ANIMATION_LYING || isLying()) {
+                state.getController().setAnimation(LYING_ANIMATION);
+                return PlayState.CONTINUE;
+            }
             if (getAnimation() == ANIMATION_SIT || isSitting()) {
                 state.getController().setAnimation(SITTING_ANIMATION);
                 return PlayState.CONTINUE;
             }
-            if (getAnimation() == ANIMATION_LYING || isLying()) {
-                state.getController().setAnimation(SITTING_ANIMATION);
-                return PlayState.CONTINUE;
-            }
+
             if (getAnimation() == ANIMATION_IDLE && getAttackAnimTimer() > 0) {
                 setAnimation(ANIMATION_ATTACK);
                 return PlayState.STOP;
