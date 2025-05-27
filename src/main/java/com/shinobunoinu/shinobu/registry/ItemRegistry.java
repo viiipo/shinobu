@@ -38,6 +38,10 @@ public class ItemRegistry {
             "kokorowatari",
             () -> new KokorowatariItem()
     );
+    public static final RegistryObject<Item> STRAWBERRY = ITEMS.register("strawberry",
+            () -> new StrawberryItem(new Item.Properties()
+                    .food(new FoodProperties.Builder().nutrition(2).saturationMod(0.3f).build())
+            ));
 
     // 默认状态物品
     public static final RegistryObject<Item> SHINOBU_BLOCK_DEFAULT_ITEM =

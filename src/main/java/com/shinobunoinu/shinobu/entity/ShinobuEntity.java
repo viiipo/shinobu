@@ -1,8 +1,8 @@
 package com.shinobunoinu.shinobu.entity;
 
+import com.google.common.collect.Multimap;
 import com.shinobunoinu.shinobu.entity.goal.ConditionalLookAtPlayerGoal;
-import com.shinobunoinu.shinobu.entity.goal.ShinobuAttackGoal;
-import com.shinobunoinu.shinobu.entity.goal.ShinobuBasicAttackGoal;
+import com.shinobunoinu.shinobu.entity.goal.ShinobuAutoAttackGoal;
 import com.shinobunoinu.shinobu.entity.goal.ShinobuSpinAttackGoal;
 import com.shinobunoinu.shinobu.item.KokorowatariItem;
 import com.shinobunoinu.shinobu.item.ShinobuHatItem;
@@ -15,14 +15,23 @@ import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.*;
+import net.minecraft.world.entity.ai.attributes.Attribute;
+import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.*;
+import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
+import net.minecraft.world.entity.ai.goal.target.OwnerHurtByTargetGoal;
+import net.minecraft.world.entity.ai.goal.target.OwnerHurtTargetGoal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraftforge.api.distmarker.Dist;
@@ -36,8 +45,7 @@ import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.List;
 
-import static com.shinobunoinu.shinobu.entity.goal.ShinobuAttackGoal.Mode.ASSIST_OWNER;
-import static com.shinobunoinu.shinobu.entity.goal.ShinobuAttackGoal.Mode.DEFEND_OWNER;
+import static org.openjdk.nashorn.internal.objects.NativeWeakSet.add;
 
 public class ShinobuEntity extends TamableAnimal implements GeoEntity {
     private final RawAnimation IDLING_ANIMATION = RawAnimation.begin().then("idle", Animation.LoopType.LOOP);
@@ -46,19 +54,19 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
     private final RawAnimation SITTING_TRANSITION_ANIMATION = RawAnimation.begin().then("sit_transition", Animation.LoopType.PLAY_ONCE);
     private final RawAnimation LYING_TRANSITION_ANIMATION = RawAnimation.begin().then("lie_down_transition", Animation.LoopType.PLAY_ONCE);
     private final RawAnimation LYING_ANIMATION = RawAnimation.begin().then("lie_down", Animation.LoopType.LOOP);
-    private final RawAnimation ATTACK_ANIMATION = RawAnimation.begin().then("attack", Animation.LoopType.LOOP);
+    private final RawAnimation AUTO_ATTACK_ANIMATION = RawAnimation.begin().then("attack", Animation.LoopType.PLAY_ONCE);
     private final RawAnimation RUN_TO_TARGET_ANIMATION = RawAnimation.begin().then("runtotarget", Animation.LoopType.LOOP);
     private final RawAnimation SPIN_ATTACK_ANIMATION = RawAnimation.begin().then("attack1", Animation.LoopType.LOOP);
     protected static final byte ANIMATION_IDLE = 0;
     protected static final byte ANIMATION_MOVE = 1;
     protected static final byte ANIMATION_SIT = 2;
     protected static final byte ANIMATION_LIE = 3;
-    public static final byte ANIMATION_ATTACK = 4;
+    public static final byte ANIMATION_AUTO_ATTACK = 4;
     protected static final byte ANIMATION_SPIN_ATTACK = 5;
     protected static final EntityDataAccessor<Byte> ANIMATION = SynchedEntityData.defineId(ShinobuEntity.class, EntityDataSerializers.BYTE);
     private static final EntityDataAccessor<Integer> AUTO_ATTACK_ANIM_TIMER = SynchedEntityData.defineId(ShinobuEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> SPIN_ATTACK_ANIM_TIMER = SynchedEntityData.defineId(ShinobuEntity.class, EntityDataSerializers.INT);
-    public final int AUTO_ATTACK_ANIMATION_DURATION = 20;
+    public final int AUTO_ATTACK_ANIMATION_DURATION = 10;
     public final int SPIN_ATTACK_ANIMATION_DURATION = 60;
 
     public byte getAnimation() {
@@ -106,32 +114,31 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
     @Override
 
     protected void customServerAiStep() {
-        // 空手攻击动画控制
-        if (getAutoAttackAnimTimer() > 0) {
-            setAutoAttackAnimTimer(getAutoAttackAnimTimer() - 1);
-        } else if (getAnimation() == ANIMATION_ATTACK) {
-            setAnimation(ANIMATION_IDLE);
+        // 武器攻击
+        if (this.getSpinAttackAnimTimer() == SPIN_ATTACK_ANIMATION_DURATION) {
+            setAnimation(ANIMATION_SPIN_ATTACK);
         }
 
-        // 武器攻击动画控制
-        if (getSpinAttackAnimTimer() > 0) {
-            setSpinAttackAnimTimer(getSpinAttackAnimTimer() - 1);
-            if (getSpinAttackAnimTimer() == SPIN_ATTACK_ANIMATION_DURATION - 1) {
-                // 设置动画仅在刚触发时
-                setAnimation(ANIMATION_SPIN_ATTACK);
-            }
+        if (this.getSpinAttackAnimTimer() > 0) {
+            int spinTimer = this.getSpinAttackAnimTimer() - 1;
+            this.setSpinAttackAnimTimer(spinTimer);
         } else if (getAnimation() == ANIMATION_SPIN_ATTACK) {
             setAnimation(ANIMATION_IDLE);
         }
+        // 空手攻击
+        if (this.getAutoAttackAnimTimer() == AUTO_ATTACK_ANIMATION_DURATION) {
+            setAnimation(ANIMATION_AUTO_ATTACK);
+        }
 
+        if (this.getAutoAttackAnimTimer() > 0) {
+            int autoTimer = this.getAutoAttackAnimTimer() - 1;
+            this.setAutoAttackAnimTimer(autoTimer);
+        } else if (getAnimation() == ANIMATION_AUTO_ATTACK) {
+            // 设置这个的意义是执行完一次攻击动画后重置为其他动画，如果攻击动画是play_once才能触发多次
+            setAnimation(ANIMATION_IDLE);
+        }
         super.customServerAiStep();
     }
-
-//    @Override
-//    public boolean doHurtTarget(Entity target) {
-//        setAutoAttackAnimTimer(AUTO_ATTACK_ANIMATION_DURATION);
-//        return super.doHurtTarget(target);
-//    }
 
     @OnlyIn(Dist.CLIENT)
     public static boolean CLIENT_HAS_HAT = false;
@@ -157,7 +164,9 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
                 .add(Attributes.MAX_HEALTH, 20.0D)
                 .add(Attributes.MOVEMENT_SPEED, 0.3D)
                 .add(Attributes.FOLLOW_RANGE, 20.0D)
-                .add(Attributes.ATTACK_DAMAGE, 6.0D);
+                .add(Attributes.ATTACK_DAMAGE, 6.0D)
+                .add(Attributes.ARMOR, 0.0D);
+
     }
 
     @Override
@@ -246,22 +255,31 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
             }
         }
 
+        // --- 帽子护甲值逻辑 ---
+        if (hasHeadArmor()) {
+            if (this.getAttribute(Attributes.ARMOR).getBaseValue() != 10.0D) {
+                this.getAttribute(Attributes.ARMOR).setBaseValue(10.0D); // 固定值，可换成帽子定义值
+            }
+        } else {
+            if (this.getAttribute(Attributes.ARMOR).getBaseValue() != 0.0D) {
+                this.getAttribute(Attributes.ARMOR).setBaseValue(0.0D);
+            }
+        }
     }
     // 行为目标
     @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(1, new FloatGoal(this));
-        this.goalSelector.addGoal(2, new MeleeAttackGoal(this, 1.0, true));
+        this.goalSelector.addGoal(2, new ShinobuSpinAttackGoal(this, 1.0, true, 5));
+        this.goalSelector.addGoal(2, new ShinobuAutoAttackGoal(this, 1.0, true));
         this.goalSelector.addGoal(3, new FollowOwnerGoal(this, 1.0, 10f, 2.0f, false));
         this.goalSelector.addGoal(4, new SitWhenOrderedToGoal(this));
         this.goalSelector.addGoal(5, new WaterAvoidingRandomStrollGoal(this, 1.0));
         this.goalSelector.addGoal(6, new ConditionalLookAtPlayerGoal(this, Player.class, 8.0f));
         this.goalSelector.addGoal(7, new RandomLookAroundGoal(this));
-
-        this.goalSelector.addGoal(1, new ShinobuBasicAttackGoal(this));
-
-        this.targetSelector.addGoal(1, new ShinobuSpinAttackGoal(this, DEFEND_OWNER, 5F));
-        this.targetSelector.addGoal(1, new ShinobuSpinAttackGoal(this, ASSIST_OWNER, 5F));
+        this.targetSelector.addGoal(2, (new HurtByTargetGoal(this)).setAlertOthers());
+        this.targetSelector.addGoal(1, new OwnerHurtByTargetGoal(this));
+        this.targetSelector.addGoal(1, new OwnerHurtTargetGoal(this));
     }
 
     // 与玩家交互（右键）
@@ -378,14 +396,14 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
     public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
         controllers.add(new AnimationController<>(this, "main", 0, state -> {
             // ✅ 优先播放武器攻击动画
-            if (getAnimation() == ANIMATION_SPIN_ATTACK && isAggressive() && !this.isDeadOrDying()) {
+            if (getAnimation() == ANIMATION_SPIN_ATTACK && isAggressive() && (!this.isDeadOrDying() || this.getHealth() < 0.01)) {
                 state.getController().setAnimation(SPIN_ATTACK_ANIMATION);
                 return PlayState.CONTINUE;
             }
 
             // ✅ 优先播放空手攻击动画
-            if (getAnimation() == ANIMATION_ATTACK && isAggressive()) {
-                state.getController().setAnimation(ATTACK_ANIMATION);
+            if (getAnimation() == ANIMATION_AUTO_ATTACK && isAggressive() && (!this.isDeadOrDying() || this.getHealth() < 0.01)) {
+                state.getController().setAnimation(AUTO_ATTACK_ANIMATION);
                 return PlayState.CONTINUE;
             }
 
@@ -508,6 +526,95 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
         } else {
             setWeaponItem(ItemStack.EMPTY);
         }
+    }
+    @Override
+    public boolean doHurtTarget(Entity target) {
+        if (!(target instanceof LivingEntity livingTarget)) return false;
+
+        float baseDamage = (float) this.getAttribute(Attributes.ATTACK_DAMAGE).getValue();
+
+        if (hasWeapon()) {
+            ItemStack weapon = getWeaponItem();
+
+            // ⚔️ 从武器属性中获取攻击力（AttributeModifiers）
+            Multimap<Attribute, AttributeModifier> modifiers = weapon.getAttributeModifiers(EquipmentSlot.MAINHAND);
+            for (AttributeModifier mod : modifiers.get(Attributes.ATTACK_DAMAGE)) {
+                baseDamage += mod.getAmount(); // 加上武器自带攻击力
+            }
+            // 附魔加成
+            float enchantBonus = EnchantmentHelper.getDamageBonus(weapon, livingTarget.getMobType());
+            baseDamage += enchantBonus;
+
+            // 击退
+            int knockback = EnchantmentHelper.getItemEnchantmentLevel(Enchantments.KNOCKBACK, weapon);
+            if (knockback > 0) {
+                double dx = target.getX() - this.getX();
+                double dz = target.getZ() - this.getZ();
+                livingTarget.knockback(knockback * 0.5F, dx, dz);
+            }
+
+            // 火焰
+            int fire = EnchantmentHelper.getItemEnchantmentLevel(Enchantments.FIRE_ASPECT, weapon);
+            if (fire > 0) {
+                target.setSecondsOnFire(4 * fire);
+            }
+
+            // ✅ 武器耐久消耗 + 播放音效
+            weapon.hurtAndBreak(1, this, (e) -> {
+                e.setWeaponItem(ItemStack.EMPTY);
+
+                // 播放物品破损音效
+                this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                        net.minecraft.sounds.SoundEvents.ITEM_BREAK,
+                        this.getSoundSource(), 1.0F, 1.0F);
+            });
+        }
+
+        return target.hurt(this.damageSources().mobAttack(this), baseDamage);
+    }
+
+
+
+    @Override
+    public boolean hurt(DamageSource source, float amount) {
+        float finalDamage = amount;
+
+        if (hasHeadArmor()) {
+            ItemStack hat = getHeadArmor();
+
+            // 附魔等级
+            int protectionLevel = EnchantmentHelper.getItemEnchantmentLevel(Enchantments.ALL_DAMAGE_PROTECTION, hat);
+            int projProtection = EnchantmentHelper.getItemEnchantmentLevel(Enchantments.PROJECTILE_PROTECTION, hat);
+            int fireProtection = EnchantmentHelper.getItemEnchantmentLevel(Enchantments.FIRE_PROTECTION, hat);
+            int explosionProtection = EnchantmentHelper.getItemEnchantmentLevel(Enchantments.BLAST_PROTECTION, hat);
+
+            // 应用保护类附魔（每级约减免 0.8 点伤害，可按需调整）
+            if (protectionLevel > 0) finalDamage -= protectionLevel * 0.8F;
+            if (source.is(DamageTypeTags.IS_PROJECTILE) && projProtection > 0) {
+                finalDamage -= projProtection * 0.8F;
+            }
+            if (source.is(DamageTypeTags.IS_FIRE) && fireProtection > 0) {
+                finalDamage -= fireProtection * 0.8F;
+            }
+            if (source.is(DamageTypeTags.IS_EXPLOSION) && explosionProtection > 0) {
+                finalDamage -= explosionProtection * 0.8F;
+            }
+
+            // 保证最低伤害
+            finalDamage = Math.max(finalDamage, 0.1F);
+
+            // ✅ 每次伤害消耗 1 点耐久，耐久为 0 时卸下帽子
+            hat.hurtAndBreak(1, this, (e) -> {
+                e.setHeadArmor(ItemStack.EMPTY);
+
+                // ✅ 播放破损音效
+                this.level().playSound(null, this.getX(), this.getY(), this.getZ(),
+                        net.minecraft.sounds.SoundEvents.ITEM_BREAK,
+                        this.getSoundSource(), 1.0F, 1.0F);
+            });
+        }
+
+        return super.hurt(source, finalDamage);
     }
 
 }

@@ -1,7 +1,10 @@
 package com.shinobunoinu.shinobu.registry;
 import com.shinobunoinu.shinobu.block.ShinobuBlock;
 import com.shinobunoinu.shinobu.Shinobu;
+import com.shinobunoinu.shinobu.block.StrawberryCropBlock;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
@@ -12,7 +15,8 @@ public class BlockRegistry {
 
     // ▶▶▶ 新方块注册位置 ▶▶▶
     public static final RegistryObject<Block> SHINOBU_BLOCK = BLOCKS.register("shinobu_block", ShinobuBlock::new);
-
+    public static final RegistryObject<StrawberryCropBlock> STRAWBERRY_CROP = BLOCKS.register("strawberry_crop",
+            () -> new StrawberryCropBlock(BlockBehaviour.Properties.copy(Blocks.WHEAT)));
     // 在此处添加新的注册条目，格式如下：
     // public static final RegistryObject<Block> 大写方块名 =
     //     BLOCKS.register("小写方块", 自定义方块类::new);

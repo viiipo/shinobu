@@ -19,7 +19,6 @@ public class ShinobuRenderer extends GeoEntityRenderer<ShinobuEntity> {
                        PoseStack poseStack, MultiBufferSource bufferSource, int packedLight) {
         // ✅ 每帧从实体同步状态 → 客户端静态变量（供模型判断用）
         ShinobuEntity.CLIENT_HAS_HAT = entity.hasHeadArmor();
-        System.out.println("[DEBUG] ShinobuEntity.CLIENT_HAS_HAT = " + ShinobuEntity.CLIENT_HAS_HAT);
 
         super.render(entity, entityYaw, partialTicks, poseStack, bufferSource, packedLight);
     }}
