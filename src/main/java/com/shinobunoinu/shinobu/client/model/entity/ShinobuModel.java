@@ -42,5 +42,9 @@ public class ShinobuModel extends GeoModel<ShinobuEntity> {
             hat.setHidden(!ShinobuEntity.CLIENT_HAS_HAT);
 
         }
+        CoreGeoBone sword = getAnimationProcessor().getBone("kokorowatari");
+        if (sword != null) {
+            sword.setHidden(!entity.hasWeapon());
+        }
     }
 }

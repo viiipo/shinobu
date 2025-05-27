@@ -1,7 +1,10 @@
 package com.shinobunoinu.shinobu.entity;
 
 import com.shinobunoinu.shinobu.entity.goal.ConditionalLookAtPlayerGoal;
+import com.shinobunoinu.shinobu.entity.goal.ShinobuAttackGoal;
+import com.shinobunoinu.shinobu.entity.goal.ShinobuBasicAttackGoal;
 import com.shinobunoinu.shinobu.entity.goal.ShinobuSpinAttackGoal;
+import com.shinobunoinu.shinobu.item.KokorowatariItem;
 import com.shinobunoinu.shinobu.item.ShinobuHatItem;
 import com.shinobunoinu.shinobu.registry.ItemRegistry;
 import com.shinobunoinu.shinobu.registry.ParticleTypeRegistry;
@@ -50,7 +53,7 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
     protected static final byte ANIMATION_MOVE = 1;
     protected static final byte ANIMATION_SIT = 2;
     protected static final byte ANIMATION_LIE = 3;
-    protected static final byte ANIMATION_ATTACK = 4;
+    public static final byte ANIMATION_ATTACK = 4;
     protected static final byte ANIMATION_SPIN_ATTACK = 5;
     protected static final EntityDataAccessor<Byte> ANIMATION = SynchedEntityData.defineId(ShinobuEntity.class, EntityDataSerializers.BYTE);
     private static final EntityDataAccessor<Integer> AUTO_ATTACK_ANIM_TIMER = SynchedEntityData.defineId(ShinobuEntity.class, EntityDataSerializers.INT);
@@ -81,19 +84,46 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
     public void setSpinAttackAnimTimer(int time) {
         this.entityData.set(SPIN_ATTACK_ANIM_TIMER, time);
     }
+    private static final EntityDataAccessor<Boolean> DATA_HAS_WEAPON =
+            SynchedEntityData.defineId(ShinobuEntity.class, EntityDataSerializers.BOOLEAN);
+
+    private ItemStack weaponItem = ItemStack.EMPTY;
+
+    public boolean hasWeapon() {
+        return this.entityData.get(DATA_HAS_WEAPON);
+    }
+
+    public ItemStack getWeaponItem() {
+        return weaponItem;
+    }
+
+    public void setWeaponItem(ItemStack stack) {
+        this.weaponItem = stack;
+        this.entityData.set(DATA_HAS_WEAPON, !stack.isEmpty());
+    }
+
 
     @Override
+
     protected void customServerAiStep() {
-        if (this.getSpinAttackAnimTimer() == SPIN_ATTACK_ANIMATION_DURATION) {
-            setAnimation(ANIMATION_SPIN_ATTACK);
+        // 空手攻击动画控制
+        if (getAutoAttackAnimTimer() > 0) {
+            setAutoAttackAnimTimer(getAutoAttackAnimTimer() - 1);
+        } else if (getAnimation() == ANIMATION_ATTACK) {
+            setAnimation(ANIMATION_IDLE);
         }
 
-        if (this.getSpinAttackAnimTimer() > 0) {
-            int animTimer = this.getSpinAttackAnimTimer() - 1;
-            this.setSpinAttackAnimTimer(animTimer);
+        // 武器攻击动画控制
+        if (getSpinAttackAnimTimer() > 0) {
+            setSpinAttackAnimTimer(getSpinAttackAnimTimer() - 1);
+            if (getSpinAttackAnimTimer() == SPIN_ATTACK_ANIMATION_DURATION - 1) {
+                // 设置动画仅在刚触发时
+                setAnimation(ANIMATION_SPIN_ATTACK);
+            }
         } else if (getAnimation() == ANIMATION_SPIN_ATTACK) {
             setAnimation(ANIMATION_IDLE);
         }
+
         super.customServerAiStep();
     }
 
@@ -135,9 +165,11 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
         super.defineSynchedData();
         this.entityData.define(DATA_SITTING, false);
         this.entityData.define(DATA_LYING, false);
-        this.entityData.define(DATA_HAS_HAT, false); // ✅ 注册帽子同步字段
+        this.entityData.define(DATA_HAS_HAT, false);
         this.entityData.define(ANIMATION, ANIMATION_IDLE);
         this.entityData.define(SPIN_ATTACK_ANIM_TIMER, 0);
+        this.entityData.define(AUTO_ATTACK_ANIM_TIMER, 0); // ✅ 必须添加
+        this.entityData.define(DATA_HAS_WEAPON, false);
     }
 
     @Override
@@ -225,6 +257,9 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
         this.goalSelector.addGoal(5, new WaterAvoidingRandomStrollGoal(this, 1.0));
         this.goalSelector.addGoal(6, new ConditionalLookAtPlayerGoal(this, Player.class, 8.0f));
         this.goalSelector.addGoal(7, new RandomLookAroundGoal(this));
+
+        this.goalSelector.addGoal(1, new ShinobuBasicAttackGoal(this));
+
         this.targetSelector.addGoal(1, new ShinobuSpinAttackGoal(this, DEFEND_OWNER, 5F));
         this.targetSelector.addGoal(1, new ShinobuSpinAttackGoal(this, ASSIST_OWNER, 5F));
     }
@@ -266,6 +301,27 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
                 setHeadArmor(itemstack.copyWithCount(1));
                 if (!player.getAbilities().instabuild) itemstack.shrink(1);
                 player.displayClientMessage(Component.literal("Shinobu equipped the hat!"), true);
+                return InteractionResult.CONSUME;
+            }
+            // --- 取下武器：Shift + 空手，优先于帽子 ---
+            if (isShift && itemstack.isEmpty() && hasWeapon()) {
+                player.addItem(getWeaponItem().copy());
+                setWeaponItem(ItemStack.EMPTY);
+                player.displayClientMessage(Component.literal("Shinobu put away her weapon."), true);
+                return InteractionResult.CONSUME;
+            }
+
+// --- 装备武器：手持武器且当前没有武器 ---
+            if (!hasWeapon() && itemstack.getItem() instanceof KokorowatariItem) {
+                // 如果有帽子，先卸下帽子
+                if (hasHeadArmor()) {
+                    player.addItem(getHeadArmor().copy());
+                    setHeadArmor(ItemStack.EMPTY);
+                }
+
+                setWeaponItem(itemstack.copyWithCount(1));
+                if (!player.getAbilities().instabuild) itemstack.shrink(1);
+                player.displayClientMessage(Component.literal("Shinobu equipped her sword!"), true);
                 return InteractionResult.CONSUME;
             }
 
@@ -321,34 +377,58 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
         controllers.add(new AnimationController<>(this, "main", 0, state -> {
-            if(getAnimation() == ANIMATION_SPIN_ATTACK && isAggressive() && !(this.isDeadOrDying() || this.getHealth() < 0.01)) {
+            // ✅ 优先播放武器攻击动画
+            if (getAnimation() == ANIMATION_SPIN_ATTACK && isAggressive() && !this.isDeadOrDying()) {
                 state.getController().setAnimation(SPIN_ATTACK_ANIMATION);
                 return PlayState.CONTINUE;
             }
-            if(isAggressive()) {
-                state.getController().setAnimation(RUN_TO_TARGET_ANIMATION);
+
+            // ✅ 优先播放空手攻击动画
+            if (getAnimation() == ANIMATION_ATTACK && isAggressive()) {
+                state.getController().setAnimation(ATTACK_ANIMATION);
                 return PlayState.CONTINUE;
             }
-            if (((getAnimation() == ANIMATION_MOVE || state.isMoving()) && getSpinAttackAnimTimer() <= 0)) {
+
+            // ✅ 武器奔跑 / 普通移动（只有未播放攻击动画时才走到这里）
+            if (isAggressive()) {
+                if (hasWeapon()) {
+                    state.getController().setAnimation(RUN_TO_TARGET_ANIMATION);
+                } else {
+                    state.getController().setAnimation(MOVING_ANIMATION);
+                }
+                return PlayState.CONTINUE;
+            }
+
+            // ✅ 非战斗状态下的移动动画
+            if ((getAnimation() == ANIMATION_MOVE || state.isMoving()) && getSpinAttackAnimTimer() <= 0) {
                 state.getController().setAnimation(MOVING_ANIMATION);
                 return PlayState.CONTINUE;
             }
+
+            // ✅ 空闲动画
             if (getAnimation() == ANIMATION_IDLE && getSpinAttackAnimTimer() <= 0 && !state.isMoving()) {
                 state.getController().setAnimation(IDLING_ANIMATION);
                 return PlayState.CONTINUE;
             }
+
+            // ✅ 躺下动画
             if (getAnimation() == ANIMATION_LIE || isLying()) {
                 state.getController().setAnimation(LYING_ANIMATION);
                 return PlayState.CONTINUE;
             }
+
+            // ✅ 坐下动画
             if (getAnimation() == ANIMATION_SIT || isSitting()) {
                 state.getController().setAnimation(SITTING_ANIMATION);
                 return PlayState.CONTINUE;
             }
+
+            // ✅ 安全兜底：动画状态与 Spin Timer 不一致时修正
             if (getAnimation() == ANIMATION_IDLE && getSpinAttackAnimTimer() > 0) {
                 setAnimation(ANIMATION_SPIN_ATTACK);
                 return PlayState.STOP;
             }
+
             return PlayState.CONTINUE;
         }));
     }
@@ -400,6 +480,11 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
         if (!headArmor.isEmpty()) {
             tag.put("HeadArmor", headArmor.save(new CompoundTag()));
         }
+        // 保存武器
+        if (!weaponItem.isEmpty()) {
+            tag.put("WeaponItem", weaponItem.save(new CompoundTag()));
+        }
+
     }
 
     @Override
@@ -417,4 +502,12 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
         } else {
             setHeadArmor(ItemStack.EMPTY); // 防止 NULL
         }
-    }}
+        if (tag.contains("WeaponItem", Tag.TAG_COMPOUND)) {
+            ItemStack loaded = ItemStack.of(tag.getCompound("WeaponItem"));
+            setWeaponItem(loaded);
+        } else {
+            setWeaponItem(ItemStack.EMPTY);
+        }
+    }
+
+}
