@@ -12,6 +12,7 @@ public class BlockRegistry {
 
     // ▶▶▶ 新方块注册位置 ▶▶▶
     public static final RegistryObject<Block> SHINOBU_BLOCK = BLOCKS.register("shinobu_block", ShinobuBlock::new);
+
     // 在此处添加新的注册条目，格式如下：
     // public static final RegistryObject<Block> 大写方块名 =
     //     BLOCKS.register("小写方块", 自定义方块类::new);
