@@ -1,8 +1,7 @@
 package com.shinobunoinu.shinobu.entity;
 
 import com.shinobunoinu.shinobu.entity.goal.ConditionalLookAtPlayerGoal;
-import com.shinobunoinu.shinobu.entity.goal.ShinobuAttackGoal;
-import com.shinobunoinu.shinobu.entity.goal.ShinobuBasicAttackGoal;
+import com.shinobunoinu.shinobu.entity.goal.ShinobuAutoAttackGoal;
 import com.shinobunoinu.shinobu.entity.goal.ShinobuSpinAttackGoal;
 import com.shinobunoinu.shinobu.item.KokorowatariItem;
 import com.shinobunoinu.shinobu.item.ShinobuHatItem;
@@ -21,6 +20,9 @@ import net.minecraft.world.entity.*;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.*;
+import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
+import net.minecraft.world.entity.ai.goal.target.OwnerHurtByTargetGoal;
+import net.minecraft.world.entity.ai.goal.target.OwnerHurtTargetGoal;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -36,9 +38,6 @@ import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.List;
 
-import static com.shinobunoinu.shinobu.entity.goal.ShinobuAttackGoal.Mode.ASSIST_OWNER;
-import static com.shinobunoinu.shinobu.entity.goal.ShinobuAttackGoal.Mode.DEFEND_OWNER;
-
 public class ShinobuEntity extends TamableAnimal implements GeoEntity {
     private final RawAnimation IDLING_ANIMATION = RawAnimation.begin().then("idle", Animation.LoopType.LOOP);
     private final RawAnimation MOVING_ANIMATION = RawAnimation.begin().then("run", Animation.LoopType.LOOP);
@@ -46,19 +45,19 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
     private final RawAnimation SITTING_TRANSITION_ANIMATION = RawAnimation.begin().then("sit_transition", Animation.LoopType.PLAY_ONCE);
     private final RawAnimation LYING_TRANSITION_ANIMATION = RawAnimation.begin().then("lie_down_transition", Animation.LoopType.PLAY_ONCE);
     private final RawAnimation LYING_ANIMATION = RawAnimation.begin().then("lie_down", Animation.LoopType.LOOP);
-    private final RawAnimation ATTACK_ANIMATION = RawAnimation.begin().then("attack", Animation.LoopType.LOOP);
+    private final RawAnimation AUTO_ATTACK_ANIMATION = RawAnimation.begin().then("attack", Animation.LoopType.PLAY_ONCE);
     private final RawAnimation RUN_TO_TARGET_ANIMATION = RawAnimation.begin().then("runtotarget", Animation.LoopType.LOOP);
     private final RawAnimation SPIN_ATTACK_ANIMATION = RawAnimation.begin().then("attack1", Animation.LoopType.LOOP);
     protected static final byte ANIMATION_IDLE = 0;
     protected static final byte ANIMATION_MOVE = 1;
     protected static final byte ANIMATION_SIT = 2;
     protected static final byte ANIMATION_LIE = 3;
-    public static final byte ANIMATION_ATTACK = 4;
+    public static final byte ANIMATION_AUTO_ATTACK = 4;
     protected static final byte ANIMATION_SPIN_ATTACK = 5;
     protected static final EntityDataAccessor<Byte> ANIMATION = SynchedEntityData.defineId(ShinobuEntity.class, EntityDataSerializers.BYTE);
     private static final EntityDataAccessor<Integer> AUTO_ATTACK_ANIM_TIMER = SynchedEntityData.defineId(ShinobuEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> SPIN_ATTACK_ANIM_TIMER = SynchedEntityData.defineId(ShinobuEntity.class, EntityDataSerializers.INT);
-    public final int AUTO_ATTACK_ANIMATION_DURATION = 20;
+    public final int AUTO_ATTACK_ANIMATION_DURATION = 10;
     public final int SPIN_ATTACK_ANIMATION_DURATION = 60;
 
     public byte getAnimation() {
@@ -106,32 +105,31 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
     @Override
 
     protected void customServerAiStep() {
-        // 空手攻击动画控制
-        if (getAutoAttackAnimTimer() > 0) {
-            setAutoAttackAnimTimer(getAutoAttackAnimTimer() - 1);
-        } else if (getAnimation() == ANIMATION_ATTACK) {
-            setAnimation(ANIMATION_IDLE);
+        // 武器攻击
+        if (this.getSpinAttackAnimTimer() == SPIN_ATTACK_ANIMATION_DURATION) {
+            setAnimation(ANIMATION_SPIN_ATTACK);
         }
 
-        // 武器攻击动画控制
-        if (getSpinAttackAnimTimer() > 0) {
-            setSpinAttackAnimTimer(getSpinAttackAnimTimer() - 1);
-            if (getSpinAttackAnimTimer() == SPIN_ATTACK_ANIMATION_DURATION - 1) {
-                // 设置动画仅在刚触发时
-                setAnimation(ANIMATION_SPIN_ATTACK);
-            }
+        if (this.getSpinAttackAnimTimer() > 0) {
+            int spinTimer = this.getSpinAttackAnimTimer() - 1;
+            this.setSpinAttackAnimTimer(spinTimer);
         } else if (getAnimation() == ANIMATION_SPIN_ATTACK) {
             setAnimation(ANIMATION_IDLE);
         }
+        // 空手攻击
+        if (this.getAutoAttackAnimTimer() == AUTO_ATTACK_ANIMATION_DURATION) {
+            setAnimation(ANIMATION_AUTO_ATTACK);
+        }
 
+        if (this.getAutoAttackAnimTimer() > 0) {
+            int autoTimer = this.getAutoAttackAnimTimer() - 1;
+            this.setAutoAttackAnimTimer(autoTimer);
+        } else if (getAnimation() == ANIMATION_AUTO_ATTACK) {
+            // 设置这个的意义是执行完一次攻击动画后重置为其他动画，如果攻击动画是play_once才能触发多次
+            setAnimation(ANIMATION_IDLE);
+        }
         super.customServerAiStep();
     }
-
-//    @Override
-//    public boolean doHurtTarget(Entity target) {
-//        setAutoAttackAnimTimer(AUTO_ATTACK_ANIMATION_DURATION);
-//        return super.doHurtTarget(target);
-//    }
 
     @OnlyIn(Dist.CLIENT)
     public static boolean CLIENT_HAS_HAT = false;
@@ -251,17 +249,16 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
     @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(1, new FloatGoal(this));
-        this.goalSelector.addGoal(2, new MeleeAttackGoal(this, 1.0, true));
+        this.goalSelector.addGoal(2, new ShinobuSpinAttackGoal(this, 1.0, true, 5));
+        this.goalSelector.addGoal(2, new ShinobuAutoAttackGoal(this, 1.0, true));
         this.goalSelector.addGoal(3, new FollowOwnerGoal(this, 1.0, 10f, 2.0f, false));
         this.goalSelector.addGoal(4, new SitWhenOrderedToGoal(this));
         this.goalSelector.addGoal(5, new WaterAvoidingRandomStrollGoal(this, 1.0));
         this.goalSelector.addGoal(6, new ConditionalLookAtPlayerGoal(this, Player.class, 8.0f));
         this.goalSelector.addGoal(7, new RandomLookAroundGoal(this));
-
-        this.goalSelector.addGoal(1, new ShinobuBasicAttackGoal(this));
-
-        this.targetSelector.addGoal(1, new ShinobuSpinAttackGoal(this, DEFEND_OWNER, 5F));
-        this.targetSelector.addGoal(1, new ShinobuSpinAttackGoal(this, ASSIST_OWNER, 5F));
+        this.targetSelector.addGoal(2, (new HurtByTargetGoal(this)).setAlertOthers());
+        this.targetSelector.addGoal(1, new OwnerHurtByTargetGoal(this));
+        this.targetSelector.addGoal(1, new OwnerHurtTargetGoal(this));
     }
 
     // 与玩家交互（右键）
@@ -378,14 +375,14 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
     public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
         controllers.add(new AnimationController<>(this, "main", 0, state -> {
             // ✅ 优先播放武器攻击动画
-            if (getAnimation() == ANIMATION_SPIN_ATTACK && isAggressive() && !this.isDeadOrDying()) {
+            if (getAnimation() == ANIMATION_SPIN_ATTACK && isAggressive() && (!this.isDeadOrDying() || this.getHealth() < 0.01)) {
                 state.getController().setAnimation(SPIN_ATTACK_ANIMATION);
                 return PlayState.CONTINUE;
             }
 
             // ✅ 优先播放空手攻击动画
-            if (getAnimation() == ANIMATION_ATTACK && isAggressive()) {
-                state.getController().setAnimation(ATTACK_ANIMATION);
+            if (getAnimation() == ANIMATION_AUTO_ATTACK && isAggressive() && (!this.isDeadOrDying() || this.getHealth() < 0.01)) {
+                state.getController().setAnimation(AUTO_ATTACK_ANIMATION);
                 return PlayState.CONTINUE;
             }
 
