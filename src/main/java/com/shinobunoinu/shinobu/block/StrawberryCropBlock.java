@@ -21,16 +21,26 @@ import net.minecraft.world.level.block.CropBlock;
 import net.minecraft.world.level.block.FarmBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.VoxelShape;
 
 import java.util.Collections;
 import java.util.List;
 
 public class StrawberryCropBlock extends CropBlock {
 
-    public static final IntegerProperty AGE = IntegerProperty.create("age", 0, 4); // 5阶段：0~4
+    public static final IntegerProperty VINE_AGE = BlockStateProperties.AGE_4;
+    protected static final VoxelShape[] SHAPE_BY_AGE = new VoxelShape[]{
+            Block.box(6.0D, 0.0D, 6.0D, 10.0D, 4.0D, 10.0D),
+            Block.box(2.0D, 0.0D, 2.0D, 14.0D, 6.0D, 14.0D),
+            Block.box(0.0D, 0.0D, 0.0D, 16.0D, 8.0D, 16.0D),
+            Block.box(0.0D, 0.0D, 0.0D, 16.0D, 12.0D, 16.0D),
+            Block.box(0.0D, 0.0D, 0.0D, 16.0D, 12.0D, 16.0D)
+    };
 
     public StrawberryCropBlock(Properties properties) {
         super(properties);
@@ -39,7 +49,7 @@ public class StrawberryCropBlock extends CropBlock {
 
     @Override
     public IntegerProperty getAgeProperty() {
-        return AGE;
+        return VINE_AGE;
     }
 
     @Override
@@ -107,5 +117,10 @@ public class StrawberryCropBlock extends CropBlock {
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         builder.add(getAgeProperty());
+    }
+
+    @Override
+    public VoxelShape getShape(BlockState state, BlockGetter level, BlockPos pos, CollisionContext context) {
+        return SHAPE_BY_AGE[state.getValue(getAgeProperty())];
     }
 }

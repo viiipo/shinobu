@@ -45,8 +45,6 @@ import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.List;
 
-import static org.openjdk.nashorn.internal.objects.NativeWeakSet.add;
-
 public class ShinobuEntity extends TamableAnimal implements GeoEntity {
     private final RawAnimation IDLING_ANIMATION = RawAnimation.begin().then("idle", Animation.LoopType.LOOP);
     private final RawAnimation MOVING_ANIMATION = RawAnimation.begin().then("run", Animation.LoopType.LOOP);
@@ -624,8 +622,6 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
 
         return target.hurt(this.damageSources().mobAttack(this), baseDamage);
     }
-
-
 
     @Override
     public boolean hurt(DamageSource source, float amount) {
