@@ -19,7 +19,7 @@ public class EntityRegistry {
     public static final RegistryObject<EntityType<ShinobuEntity>> SHINOBU =
             ENTITIES.register("shinobu", () ->
                     EntityType.Builder.<ShinobuEntity>of(ShinobuEntity::new, MobCategory.CREATURE)
-                            .sized(0.6f, 1.4f) // 实体宽高
+                            .sized(0.6f, 1.0f) // 实体宽高
                             .build(new ResourceLocation(Shinobu.MODID, "shinobu").toString()));
 
     public static void register(IEventBus bus) {

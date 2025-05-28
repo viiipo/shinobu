@@ -54,11 +54,17 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
     protected static final byte ANIMATION_LIE = 3;
     public static final byte ANIMATION_AUTO_ATTACK = 4;
     protected static final byte ANIMATION_SPIN_ATTACK = 5;
+    protected static final byte ANIMATION_SIT_TRANSITION = 6;
+    protected static final byte ANIMATION_LIE_TRANSITION = 7;
     protected static final EntityDataAccessor<Byte> ANIMATION = SynchedEntityData.defineId(ShinobuEntity.class, EntityDataSerializers.BYTE);
     private static final EntityDataAccessor<Integer> AUTO_ATTACK_ANIM_TIMER = SynchedEntityData.defineId(ShinobuEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> SPIN_ATTACK_ANIM_TIMER = SynchedEntityData.defineId(ShinobuEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> SIT_DURATION_ANIM_TIMER = SynchedEntityData.defineId(ShinobuEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> LIE_DURATION_ANIM_TIMER = SynchedEntityData.defineId(ShinobuEntity.class, EntityDataSerializers.INT);
     public final int AUTO_ATTACK_ANIMATION_DURATION = 10;
     public final int SPIN_ATTACK_ANIMATION_DURATION = 60;
+    public final int SIT_DURATION_ANIMATION_DURATION = 16;
+    public final int LIE_DURATION_ANIMATION_DURATION = 16;
 
     public byte getAnimation() {
         return entityData.get(ANIMATION);
@@ -83,6 +89,23 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
     public void setSpinAttackAnimTimer(int time) {
         this.entityData.set(SPIN_ATTACK_ANIM_TIMER, time);
     }
+
+    public int getSitDurationAnimTimer() {
+        return (Integer) this.entityData.get(SIT_DURATION_ANIM_TIMER);
+    }
+
+    public void setSitDurationAnimTimer(int time) {
+        this.entityData.set(SIT_DURATION_ANIM_TIMER, time);
+    }
+
+    public int getLieDurationAnimTimer() {
+        return (Integer) this.entityData.get(LIE_DURATION_ANIM_TIMER);
+    }
+
+    public void setLieDurationAnimTimer(int time) {
+        this.entityData.set(LIE_DURATION_ANIM_TIMER, time);
+    }
+
     private static final EntityDataAccessor<Boolean> DATA_HAS_WEAPON =
             SynchedEntityData.defineId(ShinobuEntity.class, EntityDataSerializers.BOOLEAN);
 
@@ -109,7 +132,6 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
         if (this.getSpinAttackAnimTimer() == SPIN_ATTACK_ANIMATION_DURATION) {
             setAnimation(ANIMATION_SPIN_ATTACK);
         }
-
         if (this.getSpinAttackAnimTimer() > 0) {
             int spinTimer = this.getSpinAttackAnimTimer() - 1;
             this.setSpinAttackAnimTimer(spinTimer);
@@ -120,13 +142,32 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
         if (this.getAutoAttackAnimTimer() == AUTO_ATTACK_ANIMATION_DURATION) {
             setAnimation(ANIMATION_AUTO_ATTACK);
         }
-
         if (this.getAutoAttackAnimTimer() > 0) {
             int autoTimer = this.getAutoAttackAnimTimer() - 1;
             this.setAutoAttackAnimTimer(autoTimer);
         } else if (getAnimation() == ANIMATION_AUTO_ATTACK) {
             // 设置这个的意义是执行完一次攻击动画后重置为其他动画，如果攻击动画是play_once才能触发多次
             setAnimation(ANIMATION_IDLE);
+        }
+        // 坐下
+        if (this.getSitDurationAnimTimer() == SIT_DURATION_ANIMATION_DURATION) {
+            setAnimation(ANIMATION_SIT_TRANSITION);
+        }
+        if (this.getSitDurationAnimTimer() > 0) {
+            int sitTimer = this.getSitDurationAnimTimer() - 1;
+            this.setSitDurationAnimTimer(sitTimer);
+        } else if (getAnimation() == ANIMATION_SIT_TRANSITION) {
+            setAnimation(ANIMATION_SIT);
+        }
+        // 躺下
+        if (this.getLieDurationAnimTimer() == LIE_DURATION_ANIMATION_DURATION) {
+            setAnimation(ANIMATION_LIE_TRANSITION);
+        }
+        if (this.getLieDurationAnimTimer() > 0) {
+            int lieTimer = this.getLieDurationAnimTimer() - 1;
+            this.setLieDurationAnimTimer(lieTimer);
+        } else if (getAnimation() == ANIMATION_LIE_TRANSITION) {
+            setAnimation(ANIMATION_LIE);
         }
         super.customServerAiStep();
     }
@@ -166,7 +207,9 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
         this.entityData.define(DATA_HAS_HAT, false);
         this.entityData.define(ANIMATION, ANIMATION_IDLE);
         this.entityData.define(SPIN_ATTACK_ANIM_TIMER, 0);
-        this.entityData.define(AUTO_ATTACK_ANIM_TIMER, 0); // ✅ 必须添加
+        this.entityData.define(AUTO_ATTACK_ANIM_TIMER, 0);
+        this.entityData.define(SIT_DURATION_ANIM_TIMER, 0);
+        this.entityData.define(LIE_DURATION_ANIM_TIMER, 0);
         this.entityData.define(DATA_HAS_WEAPON, false);
     }
 
@@ -177,7 +220,7 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
         // 坐下后累计时间
         if (isSitting() && !isLying()) {
             sittingTime++;
-            if (sittingTime > 600) { // 30秒
+            if (sittingTime > 60) { // 30秒
                 setLying(true);
             }
         } else {
@@ -249,7 +292,7 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
     @Override
     protected void registerGoals() {
         this.goalSelector.addGoal(1, new FloatGoal(this));
-        this.goalSelector.addGoal(2, new ShinobuSpinAttackGoal(this, 1.0, true, 5));
+        this.goalSelector.addGoal(2, new ShinobuSpinAttackGoal(this, 1.0, true, 4));
         this.goalSelector.addGoal(2, new ShinobuAutoAttackGoal(this, 1.0, true));
         this.goalSelector.addGoal(3, new FollowOwnerGoal(this, 1.0, 10f, 2.0f, false));
         this.goalSelector.addGoal(4, new SitWhenOrderedToGoal(this));
@@ -310,12 +353,6 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
 
 // --- 装备武器：手持武器且当前没有武器 ---
             if (!hasWeapon() && itemstack.getItem() instanceof KokorowatariItem) {
-                // 如果有帽子，先卸下帽子
-                if (hasHeadArmor()) {
-                    player.addItem(getHeadArmor().copy());
-                    setHeadArmor(ItemStack.EMPTY);
-                }
-
                 setWeaponItem(itemstack.copyWithCount(1));
                 if (!player.getAbilities().instabuild) itemstack.shrink(1);
                 player.displayClientMessage(Component.literal("Shinobu equipped her sword!"), true);
@@ -340,7 +377,9 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
     public void setSitting(boolean sitting) {
         super.setOrderedToSit(sitting);
         if(sitting) {
-            setAnimation(ANIMATION_SIT);
+            if (getSitDurationAnimTimer() == 0) {
+                setSitDurationAnimTimer(SIT_DURATION_ANIMATION_DURATION);
+            }
         } else {
             setAnimation(ANIMATION_IDLE);
         }
@@ -354,9 +393,10 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
 
     public void setLying(boolean lying) {
         if(lying) {
-            setAnimation(ANIMATION_LIE);
+            if (getLieDurationAnimTimer() == 0) {
+                setLieDurationAnimTimer(LIE_DURATION_ANIMATION_DURATION);
+            }
         }
-
         this.entityData.set(DATA_LYING, lying);
     }
 
@@ -391,7 +431,11 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
                 if (hasWeapon()) {
                     state.getController().setAnimation(RUN_TO_TARGET_ANIMATION);
                 } else {
-                    state.getController().setAnimation(MOVING_ANIMATION);
+                    if (state.isMoving()) {
+                        state.getController().setAnimation(MOVING_ANIMATION);
+                    } else {
+                        state.getController().setAnimation(IDLING_ANIMATION);
+                    }
                 }
                 return PlayState.CONTINUE;
             }
@@ -402,21 +446,29 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
                 return PlayState.CONTINUE;
             }
 
-            // ✅ 空闲动画
-            if (getAnimation() == ANIMATION_IDLE && getSpinAttackAnimTimer() <= 0 && !state.isMoving()) {
-                state.getController().setAnimation(IDLING_ANIMATION);
-                return PlayState.CONTINUE;
-            }
-
             // ✅ 躺下动画
-            if (getAnimation() == ANIMATION_LIE || isLying()) {
-                state.getController().setAnimation(LYING_ANIMATION);
+            if (isLying()) {
+                if (getAnimation() == ANIMATION_LIE_TRANSITION) {
+                    state.getController().setAnimation(LYING_TRANSITION_ANIMATION);
+                } else if (getAnimation() == ANIMATION_LIE) {
+                    state.getController().setAnimation(LYING_ANIMATION);
+                }
                 return PlayState.CONTINUE;
             }
 
             // ✅ 坐下动画
-            if (getAnimation() == ANIMATION_SIT || isSitting()) {
-                state.getController().setAnimation(SITTING_ANIMATION);
+            if (isSitting()) {
+                if (getAnimation() == ANIMATION_SIT_TRANSITION) {
+                    state.getController().setAnimation(SITTING_TRANSITION_ANIMATION);
+                } else if (getAnimation() == ANIMATION_SIT) {
+                    state.getController().setAnimation(SITTING_ANIMATION);
+                }
+                return PlayState.CONTINUE;
+            }
+
+            // ✅ 空闲动画
+            if (getAnimation() == ANIMATION_IDLE && getSpinAttackAnimTimer() <= 0 && !state.isMoving()) {
+                state.getController().setAnimation(IDLING_ANIMATION);
                 return PlayState.CONTINUE;
             }
 
