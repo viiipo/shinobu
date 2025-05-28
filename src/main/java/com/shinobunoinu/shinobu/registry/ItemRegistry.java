@@ -8,6 +8,7 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemNameBlockItem;
+import net.minecraftforge.common.ForgeSpawnEggItem;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
@@ -43,6 +44,7 @@ public class ItemRegistry {
                     .food(new FoodProperties.Builder().nutrition(2).saturationMod(0.3f).build())
             ));
 
+    public static final RegistryObject<Item> SHINOBU_SPAWN_EGG = ITEMS.register("shinobu_spawn_egg", ()-> new ForgeSpawnEggItem(EntityRegistry.SHINOBU, 0xFFFFFF, 0xFAE798, (new Item.Properties())));
     // 默认状态物品
     public static final RegistryObject<Item> SHINOBU_BLOCK_DEFAULT_ITEM =
             ITEMS.register("shinobu_block_default_item",

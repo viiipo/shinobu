@@ -39,6 +39,7 @@ public class TabRegistry {
             event.accept(new ItemStack(ItemRegistry.SHINOBU_HAT.get()));
             event.accept(new ItemStack(ItemRegistry.KOKOROWATARI.get()));
             event.accept(new ItemStack(ItemRegistry.STRAWBERRY.get()));
+            event.accept(new ItemStack(ItemRegistry.SHINOBU_SPAWN_EGG.get()));
 
         }
     }}
