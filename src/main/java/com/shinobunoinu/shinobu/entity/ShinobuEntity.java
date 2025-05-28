@@ -179,7 +179,6 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
         super.customServerAiStep();
     }
 
-    @OnlyIn(Dist.CLIENT)
     public static boolean CLIENT_HAS_HAT = false;
 
     private static final EntityDataAccessor<Boolean> DATA_SITTING =
@@ -351,7 +350,7 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
             if (isShift && itemstack.isEmpty() && hasHeadArmor()) {
                 player.addItem(getHeadArmor().copy());
                 setHeadArmor(ItemStack.EMPTY);
-                player.displayClientMessage(Component.literal("Shinobu took off her hat."), true);
+                player.displayClientMessage(Component.translatable("message.shinobu.hat_removed"), true);
                 return InteractionResult.CONSUME;
             }
 
@@ -359,14 +358,14 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
             if (!hasHeadArmor() && itemstack.getItem() instanceof ShinobuHatItem) {
                 setHeadArmor(itemstack.copyWithCount(1));
                 if (!player.getAbilities().instabuild) itemstack.shrink(1);
-                player.displayClientMessage(Component.literal("Shinobu equipped the hat!"), true);
+                player.displayClientMessage(Component.translatable("message.shinobu.hat_equipped"), true);
                 return InteractionResult.CONSUME;
             }
             // --- 取下武器：Shift + 空手，优先于帽子 ---
             if (isShift && itemstack.isEmpty() && hasWeapon()) {
                 player.addItem(getWeaponItem().copy());
                 setWeaponItem(ItemStack.EMPTY);
-                player.displayClientMessage(Component.literal("Shinobu put away her weapon."), true);
+                player.displayClientMessage(Component.translatable("message.shinobu.weapon_removed"), true);
                 return InteractionResult.CONSUME;
             }
 
@@ -374,7 +373,7 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
             if (!hasWeapon() && itemstack.getItem() instanceof KokorowatariItem) {
                 setWeaponItem(itemstack.copyWithCount(1));
                 if (!player.getAbilities().instabuild) itemstack.shrink(1);
-                player.displayClientMessage(Component.literal("Shinobu equipped her sword!"), true);
+                player.displayClientMessage(Component.translatable("message.shinobu.weapon_equipped"), true);
                 return InteractionResult.CONSUME;
             }
 
@@ -382,10 +381,10 @@ public class ShinobuEntity extends TamableAnimal implements GeoEntity {
             // --- 其他情况：切换坐/站 ---
             if (isSitting()) {
                 setSitting(false);
-                player.displayClientMessage(Component.literal("Shinobu is Following"), true);
+                player.displayClientMessage(Component.translatable("message.shinobu.sitting"), true);
             } else {
                 setSitting(true);
-                player.displayClientMessage(Component.literal("Shinobu is Sitting"), true);
+                player.displayClientMessage(Component.translatable("message.shinobu.following"), true);
             }
             return InteractionResult.CONSUME;
         }
